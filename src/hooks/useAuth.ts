@@ -44,6 +44,11 @@ export const useAuth = () => {
   const signOut = async () => {
     try {
       console.log('🚪 Cerrando sesión...');
+      
+      // Limpiar estado local inmediatamente
+      setUser(null);
+      setLoading(false);
+      
       const { error } = await supabase.auth.signOut();
       
       if (error) {
@@ -52,6 +57,11 @@ export const useAuth = () => {
       }
       
       console.log('✅ Sesión cerrada exitosamente');
+      
+      // Forzar recarga de la página en producción para limpiar completamente el estado
+      if (import.meta.env.PROD) {
+        window.location.href = '/';
+      }
     } catch (err) {
       console.error('❌ Error general al cerrar sesión:', err);
       throw err;

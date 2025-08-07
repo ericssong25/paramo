@@ -392,10 +392,28 @@ function App() {
 
   const handleLogout = async () => {
     try {
+      console.log('🔄 Iniciando proceso de logout...');
+      
+      // Cerrar modales abiertos
+      setShowSettingsModal(false);
+      setShowNotificationsModal(false);
+      setShowLoginModal(false);
+      
+      // Limpiar estado de la aplicación
+      setSelectedProjectId(null);
+      setActiveView('tasks');
+      setSelectedTask(undefined);
+      setSnackbar({ isOpen: false, message: '', type: 'info' });
+      
       await signOut();
       console.log('✅ Logout exitoso');
+      
+      // Mostrar mensaje de confirmación
+      showSnackbar('Sesión cerrada exitosamente', 'success');
+      
     } catch (error) {
       console.error('❌ Error en logout:', error);
+      showSnackbar('Error al cerrar sesión', 'error');
     }
   };
 
