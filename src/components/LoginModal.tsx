@@ -6,12 +6,16 @@ interface LoginModalProps {
   isOpen: boolean;
   onClose: () => void;
   onLoginSuccess: () => void;
+  logoUrl?: string;
+  brandName?: string;
 }
 
 const LoginModal: React.FC<LoginModalProps> = ({
   isOpen,
   onClose,
-  onLoginSuccess
+  onLoginSuccess,
+  logoUrl,
+  brandName = 'Páramo'
 }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -27,28 +31,13 @@ const LoginModal: React.FC<LoginModalProps> = ({
     setError('');
 
     try {
-      console.log('🔐 Iniciando login con:', { email });
-      
       const { data, error: authError } = await supabase.auth.signInWithPassword({
         email,
         password
       });
-
-      console.log('📡 Respuesta de autenticación:', { data, error: authError });
-
-      if (authError) {
-        console.error('❌ Error de autenticación:', authError);
-        setError(authError.message);
-        return;
-      }
-
-      if (data.user) {
-        console.log('✅ Login exitoso:', data.user);
-        onLoginSuccess();
-        onClose();
-      }
+      if (authError) { setError(authError.message); return; }
+      if (data.user) { onLoginSuccess(); onClose(); }
     } catch (err) {
-      console.error('❌ Error general en login:', err);
       setError('Error inesperado. Intenta de nuevo.');
     } finally {
       setLoading(false);
@@ -56,15 +45,19 @@ const LoginModal: React.FC<LoginModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-[#12173b] flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">Iniciar Sesión</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
-          >
+          <div className="flex items-center space-x-3">
+            {logoUrl ? (
+              <img src={logoUrl} alt={brandName} className="w-8 h-8 rounded" />
+            ) : (
+              <img src="/branding/login2.svg" alt={brandName} className="w-8 h-8 rounded" />
+            )}
+            <h2 className="text-xl font-semibold text-gray-900">Iniciar Sesión</h2>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -80,9 +73,7 @@ const LoginModal: React.FC<LoginModalProps> = ({
 
           {/* Email */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Correo Electrónico
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Correo Electrónico</label>
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
@@ -99,9 +90,7 @@ const LoginModal: React.FC<LoginModalProps> = ({
 
           {/* Password */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Contraseña
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Contraseña</label>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
@@ -143,9 +132,7 @@ const LoginModal: React.FC<LoginModalProps> = ({
 
         {/* Footer */}
         <div className="px-6 py-4 bg-gray-50 rounded-b-lg">
-          <p className="text-sm text-gray-600 text-center">
-            Acceso privado para el equipo de trabajo
-          </p>
+          <p className="text-sm text-gray-600 text-center">Acceso privado para el equipo de trabajo</p>
         </div>
       </div>
     </div>

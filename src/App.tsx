@@ -567,13 +567,19 @@ function App() {
   // Si no está autenticado, mostrar pantalla de login
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">Páramo</h1>
-          <p className="text-gray-600 mb-8">Sistema de gestión de proyectos</p>
+      <div className="min-h-screen bg-[#12173b] flex flex-col items-center">
+        <div className="flex-1 flex items-center justify-center">
+          <img 
+            src="/branding/login1.svg" 
+            alt="Páramo" 
+            className="mx-auto w-96 h-64 object-contain opacity-0 animate-fade-in-scale" 
+          />
+        </div>
+        <div className="mb-16">
           <button
             onClick={handleShowLogin}
-            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
+            className="bg-white text-[#12173b] px-6 py-3 rounded-lg hover:bg-gray-100 transition-colors font-semibold opacity-0 animate-fade-in-up"
+            style={{ animationDelay: '0.6s' }}
           >
             Iniciar Sesión
           </button>

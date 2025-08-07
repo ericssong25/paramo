@@ -42,17 +42,31 @@ const Sidebar: React.FC<SidebarProps> = ({
   onOpenSettings,
   onOpenNotifications,
 }) => {
-  // Función para truncar texto largo
+  // Truncar texto
   const truncateText = (text: string, maxLength: number) => {
+    if (!text) return '';
     if (text.length <= maxLength) return text;
     return text.substring(0, maxLength) + '...';
   };
 
-  // Función para obtener solo el nombre (sin apellido)
-  const getFirstName = (fullName: string) => {
-    const nameParts = fullName.split(' ');
-    return nameParts[0];
-  };
+  // Obtener nombre real del usuario autenticado; fallback: parte local del correo
+  const displayName = authenticatedUser?.user_metadata?.name
+    || authenticatedUser?.email?.split('@')[0]
+    || currentUser.name;
+
+  const initials = (displayName || 'U')
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map(part => part[0]?.toUpperCase())
+    .join('');
+
+  // Placeholder de avatar basado en iniciales con paleta
+  const AvatarPlaceholder = (
+    <div className="w-10 h-10 rounded-full bg-primary text-white border border-muted/40 flex items-center justify-center select-none">
+      <span className="font-extrabold tracking-wide text-[13px]">{initials}</span>
+    </div>
+  );
 
   return (
     <div className="w-64 bg-white border-r border-gray-200 flex flex-col">
@@ -60,16 +74,12 @@ const Sidebar: React.FC<SidebarProps> = ({
       <div className="p-4 border-b border-gray-200">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <img 
-              src={currentUser.avatar} 
-              alt={currentUser.name}
-              className="w-10 h-10 rounded-full object-cover"
-            />
+            {AvatarPlaceholder}
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 truncate">
-                {getFirstName(currentUser.name)}
+              <p className="text-sm font-semibold text-primary truncate">
+                {displayName}
               </p>
-              <p className="text-xs text-gray-500 truncate">
+              <p className="text-xs text-muted truncate">
                 {truncateText(authenticatedUser?.email || '', 25)}
               </p>
             </div>
@@ -81,8 +91,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors relative"
           >
             <Bell className="w-4 h-4" />
-            {/* Notification badge - mostrar solo si hay notificaciones no leídas */}
-            <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+            <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
           </button>
         </div>
       </div>
