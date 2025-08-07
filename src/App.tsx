@@ -698,6 +698,7 @@ function App() {
         onCreateProject={handleCreateProject}
         onOpenSettings={handleOpenSettings}
         onOpenNotifications={handleOpenNotifications}
+        profileName={supabaseProfiles.find(p => p.user_id === user?.id)?.name}
       />
 
       {/* Main Content */}

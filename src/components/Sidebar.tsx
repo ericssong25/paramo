@@ -28,6 +28,7 @@ interface SidebarProps {
   onCreateProject: () => void;
   onOpenSettings: () => void;
   onOpenNotifications: () => void;
+  profileName?: string; // nombre proveniente de profiles.name
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -41,6 +42,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   onCreateProject,
   onOpenSettings,
   onOpenNotifications,
+  profileName,
 }) => {
   // Truncar texto
   const truncateText = (text: string, maxLength: number) => {
@@ -49,8 +51,9 @@ const Sidebar: React.FC<SidebarProps> = ({
     return text.substring(0, maxLength) + '...';
   };
 
-  // Obtener nombre real del usuario autenticado; fallback: parte local del correo
-  const displayName = authenticatedUser?.user_metadata?.name
+  // Priorizar nombre desde profiles.name; luego metadata de auth; luego email/local; por último mock currentUser
+  const displayName = profileName
+    || authenticatedUser?.user_metadata?.name
     || authenticatedUser?.email?.split('@')[0]
     || currentUser.name;
 
