@@ -780,3 +780,77 @@ export const useComments = () => {
 
   return { commentsByTask, fetchCommentsForTask, addComment, updateComment, deleteComment }
 }
+
+// Hook para preferencias de usuario
+export const usePreferences = () => {
+  type PreferenceRow = Database['public']['Tables']['user_preferences']['Row']
+  type PreferenceInsert = Database['public']['Tables']['user_preferences']['Insert']
+  type PreferenceUpdate = Database['public']['Tables']['user_preferences']['Update']
+
+  const [preferencesByUser, setPreferencesByUser] = useState<Record<string, PreferenceRow>>({})
+  const { handleError, clearError } = useSupabaseError()
+
+  const fetchPreferencesForUser = async (userId: string) => {
+    try {
+      clearError()
+      const { data, error } = await supabase
+        .from('user_preferences')
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle()
+      if (error) return
+      if (data) {
+        setPreferencesByUser(prev => ({ ...prev, [userId]: data }))
+      }
+      return data || null
+    } catch (e) {
+      // swallow
+      return null
+    }
+  }
+
+  const upsertPreferences = async (userId: string, updates: PreferenceUpdate | PreferenceInsert) => {
+    try {
+      clearError()
+      const { data, error } = await supabase
+        .from('user_preferences')
+        .upsert({ user_id: userId, ...(updates as any) }, { onConflict: 'user_id' })
+        .select()
+        .single()
+      if (error) throw error
+      if (data) {
+        setPreferencesByUser(prev => ({ ...prev, [userId]: data }))
+      }
+      return data
+    } catch (e) {
+      handleError(e)
+      throw e
+    }
+  }
+
+  // Realtime para preferencias
+  useEffect(() => {
+    const channel = supabase
+      .channel('realtime-user-preferences')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_preferences' }, (payload) => {
+        const evt = (payload as any).eventType as 'INSERT' | 'UPDATE' | 'DELETE'
+        const n: any = (payload as any).new
+        const o: any = (payload as any).old
+        const userId = n?.user_id || o?.user_id
+        if (!userId) return
+        setPreferencesByUser(prev => {
+          const copy = { ...prev }
+          if (evt === 'DELETE') {
+            delete copy[userId]
+          } else if (evt === 'INSERT' || evt === 'UPDATE') {
+            copy[userId] = n
+          }
+          return copy
+        })
+      })
+      .subscribe()
+    return () => { try { supabase.removeChannel(channel) } catch {} }
+  }, [])
+
+  return { preferencesByUser, fetchPreferencesForUser, upsertPreferences }
+}

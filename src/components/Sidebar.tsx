@@ -1,10 +1,8 @@
 import React from 'react';
 import { 
-  FolderOpen, 
   Plus, 
   Users, 
   Calendar, 
-  BarChart3,
   Settings,
   Search,
   Home,
@@ -61,7 +59,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     .split(' ')
     .filter(Boolean)
     .slice(0, 2)
-    .map(part => part[0]?.toUpperCase())
+    .map((part: string) => part[0]?.toUpperCase())
     .join('');
 
   // Placeholder de avatar basado en iniciales con paleta
@@ -118,7 +116,10 @@ const Sidebar: React.FC<SidebarProps> = ({
           </button>
 
           <button 
-            onClick={() => onViewChange('content')}
+            onClick={() => {
+              onSelectProject(null);
+              onViewChange('content');
+            }}
             className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors ${
               activeView === 'content'
                 ? 'bg-blue-50 text-blue-700'
@@ -168,7 +169,12 @@ const Sidebar: React.FC<SidebarProps> = ({
             <span className="text-sm font-medium">Analytics</span>
           </button>
 
-          <button className="w-full flex items-center space-x-3 px-3 py-2 text-gray-700 rounded-lg hover:bg-gray-50 text-left transition-colors">
+          <button 
+            onClick={() => { onSelectProject(null); onViewChange('team'); }}
+            className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors ${
+              activeView === 'team' ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-50'
+            }`}
+          >
             <Users className="w-4 h-4" />
             <span className="text-sm font-medium">Team</span>
           </button>

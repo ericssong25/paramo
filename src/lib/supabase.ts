@@ -15,6 +15,35 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 export interface Database {
   public: {
     Tables: {
+      user_preferences: {
+        Row: {
+          id: string
+          user_id: string
+          task_view: 'board' | 'list'
+          theme: 'light' | 'dark' | 'system'
+          language: 'en' | 'es'
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          task_view?: 'board' | 'list'
+          theme?: 'light' | 'dark' | 'system'
+          language?: 'en' | 'es'
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          task_view?: 'board' | 'list'
+          theme?: 'light' | 'dark' | 'system'
+          language?: 'en' | 'es'
+          created_at?: string
+          updated_at?: string
+        }
+      }
       profiles: {
         Row: {
           id: string

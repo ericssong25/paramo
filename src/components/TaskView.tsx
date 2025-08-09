@@ -3,7 +3,7 @@ import {
   X, 
   Calendar, 
   Flag, 
-  User, 
+  
   Clock, 
   Plus,
   Check,
@@ -18,7 +18,7 @@ import {
   GripVertical,
   CheckCircle
 } from 'lucide-react';
-import { Task, TaskPriority, TaskStatus, User as UserType } from '../types';
+import { Task, TaskPriority, TaskStatus, User as UserType, Subtask } from '../types';
 import {
   DndContext,
   closestCenter,
@@ -40,7 +40,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { useComments } from '../hooks/useSupabase';
 import { formatRelativeTime } from '../utils/typeConverters';
-import { Trash2 as TrashIcon, Edit as EditIcon, Check as CheckIcon, X as CloseIcon } from 'lucide-react';
+import { Trash2 as TrashIcon, Edit as EditIcon, X as CloseIcon } from 'lucide-react';
 import { useProfiles } from '../hooks/useSupabase';
 
 // Componente para subtarea arrastrable
@@ -125,6 +125,7 @@ interface TaskViewProps {
   onReorderSubtasks: (taskId: string, subtaskIds: string[]) => void;
   users: UserType[];
   authorProfileId?: string;
+  onChangeAssignee?: (taskId: string, assigneeId: string | null) => void;
 }
 
 const TaskView: React.FC<TaskViewProps> = ({
@@ -140,9 +141,23 @@ const TaskView: React.FC<TaskViewProps> = ({
   onReorderSubtasks,
   users,
   authorProfileId,
+  onChangeAssignee,
 }) => {
   const [newSubtask, setNewSubtask] = useState('');
   const [localSubtaskIds, setLocalSubtaskIds] = useState<string[]>(task.subtasks.map(s => s.id));
+  const [assigneeOpen, setAssigneeOpen] = useState(false);
+  const assigneeRef = React.useRef<HTMLDivElement | null>(null);
+  const [assigneeSearch, setAssigneeSearch] = useState('');
+
+  React.useEffect(() => {
+    if (!assigneeOpen) return;
+    const onDoc = (e: MouseEvent) => {
+      if (!assigneeRef.current) return;
+      if (!assigneeRef.current.contains(e.target as Node)) setAssigneeOpen(false);
+    };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [assigneeOpen]);
   
   // Configurar sensores para DnD
   const sensors = useSensors(
@@ -286,27 +301,47 @@ const TaskView: React.FC<TaskViewProps> = ({
             {/* Task Details Grid */}
             <div className="grid grid-cols-2 gap-6 mb-6">
               {/* Assignee */}
-              <div>
+              <div className="relative">
                 <h3 className="text-sm font-medium text-gray-500 mb-2">Assignee</h3>
                 <div className="flex items-center space-x-3">
-                  {task.assignee ? (
-                    <>
-                      <img 
-                        src={task.assignee.avatar} 
-                        alt={task.assignee.name}
-                        className="w-8 h-8 rounded-full object-cover"
-                      />
-                      <div>
-                        <p className="font-medium text-gray-900">{task.assignee.name}</p>
-                        <p className="text-sm text-gray-500 capitalize">{task.assignee.role}</p>
+                  <div className="relative" ref={assigneeRef}>
+                    <button
+                      type="button"
+                      onClick={() => setAssigneeOpen(v => !v)}
+                      className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm shadow-sm hover:bg-gray-50"
+                    >
+                      {task.assignee ? (
+                        <img src={task.assignee.avatar} alt={task.assignee.name} className="w-6 h-6 rounded-full object-cover" />
+                      ) : (
+                        <span className="w-6 h-6 rounded-full bg-gray-200 inline-block" />
+                      )}
+                      <span className="truncate max-w-[160px]">{task.assignee ? task.assignee.name : 'Unassigned'}</span>
+                      <svg className="w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                    </button>
+                    {assigneeOpen && (
+                      <div className="absolute z-20 mt-2 w-72 rounded-lg border border-gray-200 bg-white shadow-lg overflow-hidden">
+                        <div className="p-2 border-b">
+                          <input value={assigneeSearch} onChange={(e) => setAssigneeSearch(e.target.value)} placeholder="Search member..." className="w-full border border-gray-300 rounded-md text-sm px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        </div>
+                        <ul className="max-h-60 overflow-auto">
+                          <li>
+                            <button className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-800 hover:bg-gray-50" onClick={() => { onChangeAssignee && onChangeAssignee(task.id, null); setAssigneeOpen(false); }}>
+                              <span className="w-6 h-6 rounded-full bg-gray-200 inline-block" />
+                              Unassigned
+                            </button>
+                          </li>
+                          {users.filter(u => u.name.toLowerCase().includes(assigneeSearch.toLowerCase())).map(u => (
+                            <li key={u.id}>
+                              <button className={`w-full flex items-center gap-2 px-3 py-2 text-sm ${task.assignee?.id === u.id ? 'bg-blue-50 text-blue-700' : 'text-gray-800 hover:bg-gray-50'}`} onClick={() => { onChangeAssignee && onChangeAssignee(task.id, u.id); /* Optimistic UI: update local */ (task as any).assignee = { ...u }; setAssigneeOpen(false); }}>
+                                <img src={u.avatar} alt={u.name} className="w-6 h-6 rounded-full object-cover" />
+                                <span className="truncate">{u.name}</span>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
                       </div>
-                    </>
-                  ) : (
-                    <div className="flex items-center space-x-2 text-gray-500">
-                      <User className="w-5 h-5" />
-                      <span>Unassigned</span>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               </div>
 

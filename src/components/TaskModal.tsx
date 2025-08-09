@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   X, 
   Calendar, 
@@ -106,6 +107,71 @@ const TaskModal: React.FC<TaskModalProps> = ({
 
   if (!isOpen) return null;
 
+  // Custom Assignee select with search
+  function AssigneeSelect({ users, value, onChange }: { users: UserType[]; value: string; onChange: (v: string) => void }) {
+    const [open, setOpen] = useState(false)
+    const [q, setQ] = useState('')
+    const anchorRef = React.useRef<HTMLButtonElement | null>(null)
+    const [menuStyle, setMenuStyle] = useState<{left:number; top:number; width:number}>({left:0, top:0, width:0})
+
+    const selected = users.find(u => u.id === value)
+    const filtered = users.filter(u => u.name.toLowerCase().includes(q.toLowerCase()))
+
+    const updatePosition = () => {
+      const el = anchorRef.current
+      if (!el) return
+      const r = el.getBoundingClientRect()
+      setMenuStyle({ left: r.left + window.scrollX, top: r.bottom + window.scrollY + 8, width: r.width })
+    }
+
+    React.useEffect(() => {
+      if (!open) return
+      updatePosition()
+      const onDoc = (e: MouseEvent) => {
+        const el = anchorRef.current
+        if (!el) return
+        if (!el.contains(e.target as Node)) {
+          setOpen(false)
+        }
+      }
+      const onResize = () => updatePosition()
+      document.addEventListener('mousedown', onDoc)
+      window.addEventListener('resize', onResize)
+      window.addEventListener('scroll', onResize, true)
+      return () => {
+        document.removeEventListener('mousedown', onDoc)
+        window.removeEventListener('resize', onResize)
+        window.removeEventListener('scroll', onResize, true)
+      }
+    }, [open])
+
+    const dropdown = (
+      <div
+        className="z-[70] rounded-lg border border-gray-200 bg-white shadow-lg overflow-hidden"
+        style={{ position: 'fixed', left: menuStyle.left, top: menuStyle.top, width: menuStyle.width }}
+      >
+        <div className="p-2 border-b bg-white"><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search member..." className="w-full border border-gray-300 rounded-md text-sm px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"/></div>
+        <ul className="max-h-60 overflow-auto">
+          <li><button className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-800 hover:bg-gray-50" onClick={() => { onChange(''); setOpen(false) }}><span className="w-6 h-6 rounded-full bg-gray-200 inline-block"/>Unassigned</button></li>
+          {filtered.map(u => (
+            <li key={u.id}><button className={`w-full flex items-center gap-2 px-3 py-2 text-sm ${u.id===value?'bg-blue-50 text-blue-700':'text-gray-800 hover:bg-gray-50'}`} onClick={() => { onChange(u.id); setOpen(false) }}><img src={u.avatar} className="w-6 h-6 rounded-full object-cover"/><span className="truncate">{u.name}</span></button></li>
+          ))}
+        </ul>
+      </div>
+    )
+
+    return (
+      <div className="relative">
+        <button ref={anchorRef} type="button" onClick={() => setOpen(v => !v)} className="w-full inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-300 bg-white text-sm">
+          {selected ? <img src={selected.avatar} className="w-6 h-6 rounded-full object-cover"/> : <span className="w-6 h-6 rounded-full bg-gray-200 inline-block"/>}
+          <span className="truncate">{selected ? selected.name : 'Unassigned'}</span>
+          <svg className="ml-auto w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        {open ? createPortal(dropdown, document.body) : null}
+      </div>
+    )
+  }
+
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
@@ -141,7 +207,7 @@ const TaskModal: React.FC<TaskModalProps> = ({
               </div>
             </div>
 
-            <div className="p-6 space-y-6">
+            <div className="p-5 space-y-4">
               {/* Title */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -172,7 +238,7 @@ const TaskModal: React.FC<TaskModalProps> = ({
               </div>
 
               {/* Priority, Status, Assignee, Due Date */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     <Flag className="w-4 h-4 inline mr-1" />
@@ -211,16 +277,7 @@ const TaskModal: React.FC<TaskModalProps> = ({
                     <User className="w-4 h-4 inline mr-1" />
                     Assignee
                   </label>
-                  <select
-                    value={formData.assigneeId}
-                    onChange={(e) => setFormData(prev => ({ ...prev, assigneeId: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="">Unassigned</option>
-                    {users.map(user => (
-                      <option key={user.id} value={user.id}>{user.name}</option>
-                    ))}
-                  </select>
+                  <AssigneeSelect users={users} value={formData.assigneeId} onChange={(val) => setFormData(prev => ({ ...prev, assigneeId: val }))} />
                 </div>
 
                 <div>

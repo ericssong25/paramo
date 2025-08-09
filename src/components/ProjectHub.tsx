@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Calendar, 
   Users, 
@@ -12,7 +12,8 @@ import {
   Plus,
   Edit,
   Search,
-  Flag
+  Flag,
+  Image
 } from 'lucide-react';
 import { Project, User, Task, ContentItem } from '../types';
 import ContentCalendar from './ContentCalendar';
@@ -29,6 +30,7 @@ interface ProjectHubProps {
   onEditContent: (content: ContentItem) => void;
   onEditProject: (project: Project) => void;
   onBackToOverview: () => void;
+  onNavigateToContentCalendar: () => void;
 }
 
 const ProjectHub: React.FC<ProjectHubProps> = ({
@@ -43,6 +45,7 @@ const ProjectHub: React.FC<ProjectHubProps> = ({
   onEditContent,
   onEditProject,
   onBackToOverview,
+  onNavigateToContentCalendar,
 }) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'tasks' | 'calendar'>('overview');
   const [taskFilters, setTaskFilters] = useState({
@@ -52,6 +55,16 @@ const ProjectHub: React.FC<ProjectHubProps> = ({
     dueDate: 'all'
   });
   const [searchQuery, setSearchQuery] = useState('');
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Resetear pestaña activa cuando cambia el proyecto
+  useEffect(() => {
+    setActiveTab('overview');
+    // Hacer scroll al principio cuando cambia el proyecto
+    if (containerRef.current) {
+      containerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [project.id]);
 
   const projectTasks = tasks.filter(task => task.projectId === project.id);
   const projectContentItems = contentItems.filter(item => item.projectId === project.id);
@@ -129,7 +142,7 @@ const ProjectHub: React.FC<ProjectHubProps> = ({
   };
 
     return (
-    <div className="h-full flex flex-col overflow-auto">
+    <div ref={containerRef} className="h-full flex flex-col overflow-auto">
       {/* Header del Proyecto - Siempre comprimido */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-md">
         <div className="px-6 py-3">
@@ -568,9 +581,9 @@ const ProjectHub: React.FC<ProjectHubProps> = ({
               ))}
             </div>
           </div>
-                 ) : (
-           <div className="p-6">
-             <ContentCalendar
+                                   ) : (
+            <div className="p-6">
+              <ContentCalendar
                contentItems={projectContentItems}
                tasks={projectTasks}
                onCreateContent={onCreateContent}
@@ -579,6 +592,7 @@ const ProjectHub: React.FC<ProjectHubProps> = ({
                  console.log('Convertir tarea a contenido:', task);
                  onCreateContent();
                }}
+               onViewTask={onTaskClick}
              />
            </div>
          )}

@@ -160,6 +160,11 @@ export interface TaskFilter {
   assignee?: string[];
   project?: string[];
   overdue?: boolean;
+  // Nuevos filtros
+  dueFrom?: string; // 'YYYY-MM-DD'
+  dueTo?: string;   // 'YYYY-MM-DD'
+  sortBy?: 'dueDate' | 'priority' | 'status' | 'createdAt' | 'title';
+  sortDir?: 'asc' | 'desc';
   contentType?: string[];
   platform?: string[];
   campaign?: string[];

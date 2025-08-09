@@ -4,6 +4,59 @@
 
 ### **Tablas Principales**
 
+#### **0. `user_preferences` - Preferencias de Usuario**
+Preferencias persistentes por usuario autenticado (vista de tareas, tema, idioma, etc.). Relación 1:1 con cada usuario.
+
+```sql
+user_preferences (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE,
+  task_view TEXT NOT NULL DEFAULT 'board' CHECK (task_view IN ('board', 'list')),
+  theme TEXT NOT NULL DEFAULT 'system' CHECK (theme IN ('light', 'dark', 'system')),
+  language TEXT NOT NULL DEFAULT 'es' CHECK (language IN ('en', 'es')),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+)
+```
+
+Políticas RLS recomendadas:
+
+```sql
+-- Habilitar RLS
+alter table public.user_preferences enable row level security;
+
+-- Lectura: cada usuario solo ve sus preferencias
+create policy "Users can read own preferences" on public.user_preferences
+for select using (auth.uid() = user_id);
+
+-- Inserción/Actualización: cada usuario solo gestiona sus preferencias
+create policy "Users upsert own preferences" on public.user_preferences
+for insert with check (auth.uid() = user_id);
+
+create policy "Users update own preferences" on public.user_preferences
+for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- Opcional: permitir upsert idempotente con constraint UNIQUE(user_id)
+-- Usar on conflict (user_id) en el cliente
+```
+
+Trigger de `updated_at`:
+
+```sql
+create or replace function public.set_updated_at()
+returns trigger as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$ language plpgsql;
+
+drop trigger if exists user_preferences_set_updated_at on public.user_preferences;
+create trigger user_preferences_set_updated_at
+before update on public.user_preferences
+for each row execute function public.set_updated_at();
+```
+
 #### **1. `profiles` - Perfiles de Usuario**
 Extensión de `auth.users` para almacenar información adicional de usuarios.
 

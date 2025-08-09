@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import TaskBoard from './components/TaskBoard';
@@ -6,18 +6,20 @@ import ProjectModal from './components/ProjectModal';
 import TaskModal from './components/TaskModal';
 import TaskView from './components/TaskView';
 import ProjectHub from './components/ProjectHub';
+import Team from './components/Team';
 import CampaignDashboard from './components/CampaignDashboard';
 import ApprovalCenter from './components/ApprovalCenter';
 import LoginModal from './components/LoginModal';
 import SettingsModal from './components/SettingsModal';
 import NotificationsModal from './components/NotificationsModal';
 import Snackbar from './components/Snackbar';
-import { useProjects, useTasks, useContentItems, useProfiles } from './hooks/useSupabase';
+import { useProjects, useTasks, useContentItems, useProfiles, usePreferences } from './hooks/useSupabase';
 import { useAuth } from './hooks/useAuth';
 import { convertSupabaseProjectToProject, convertSupabaseTaskToTask, convertSupabaseContentItemToContentItem } from './utils/typeConverters';
 import { Project, Task, ContentItem, User, TaskStatus, Campaign, Client, Approval, TaskFilter } from './types';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import ContentCalendar from './components/ContentCalendar';
+import TaskList from './components/TaskList';
 import SupabaseErrorComponent from './components/SupabaseError';
 import { 
   mockUsers, 
@@ -29,9 +31,10 @@ import {
 function App() {
   // Hooks de Supabase
   const { projects: supabaseProjects, loading: projectsLoading, error: projectsError, createProject, updateProject } = useProjects();
-  const { tasks: supabaseTasks, loading: tasksLoading, error: tasksError, createTask, updateTask, deleteTask, updateSubtaskPositions, createSubtask, updateSubtask, deleteSubtask } = useTasks();
+  const { tasks: supabaseTasks, loading: tasksLoading, error: tasksError, createTask, updateTask, deleteTask, updateSubtaskPositions, createSubtask, updateSubtask, deleteSubtask, setLocalTasks } = useTasks();
   const { contentItems: supabaseContentItems, loading: contentLoading, error: contentError } = useContentItems();
   const { profiles: supabaseProfiles, loading: profilesLoading, error: profilesError } = useProfiles();
+  const { fetchPreferencesForUser, upsertPreferences } = usePreferences();
 
   // Hook de autenticación
   const { user, loading: authLoading, signOut, isAuthenticated } = useAuth();
@@ -65,6 +68,37 @@ function App() {
   const [selectedProject, setSelectedProject] = useState<Project | undefined>(undefined);
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<TaskFilter>({});
+  const [taskView, setTaskView] = useState<'board' | 'list'>('board');
+
+  // Cargar preferencias del usuario al iniciar sesión
+  useEffect(() => {
+    if (!user?.id) return;
+    (async () => {
+      const prefs = await fetchPreferencesForUser(user.id);
+      if (prefs?.task_view === 'list' || prefs?.task_view === 'board') {
+        setTaskView(prefs.task_view);
+      }
+    })();
+  }, [user?.id]);
+
+  // Resetear vista cuando se cambia de proyecto
+  useEffect(() => {
+    if (selectedProjectId) {
+      // Si hay un proyecto seleccionado, resetear a la vista de overview
+      // Esto se maneja internamente en ProjectHub
+    }
+  }, [selectedProjectId]);
+
+  const handleTaskViewChange = async (view: 'board' | 'list') => {
+    setTaskView(view);
+    if (user?.id) {
+      try {
+        await upsertPreferences(user.id, { user_id: user.id, task_view: view });
+      } catch {
+        // no-op
+      }
+    }
+  };
 
   // Current user (in a real app, this would come from auth)
   // const currentUser = users[0];
@@ -101,6 +135,11 @@ function App() {
   const contentItems = useMemo(() => {
     return supabaseContentItems.map(item => convertSupabaseContentItemToContentItem(item, supabaseProfiles));
   }, [supabaseContentItems, supabaseProfiles]);
+
+  const selectableUsers = useMemo(() => {
+    return supabaseProfiles
+      .map(p => ({ id: p.id, name: p.name, email: p.user_id, avatar: p.avatar || '', role: p.role }))
+  }, [supabaseProfiles]);
 
   // Find current project
   const currentProject = selectedProjectId ? projects.find(p => p.id === selectedProjectId) || null : null;
@@ -144,6 +183,42 @@ function App() {
       filtered = filtered.filter(task => 
         task.dueDate && new Date(task.dueDate) < now && task.status !== 'done'
       );
+    }
+
+    // Due date range
+    if (filter.dueFrom) {
+      const from = new Date(filter.dueFrom + 'T00:00:00');
+      filtered = filtered.filter(task => task.dueDate ? new Date(task.dueDate) >= from : false);
+    }
+    if (filter.dueTo) {
+      const to = new Date(filter.dueTo + 'T23:59:59');
+      filtered = filtered.filter(task => task.dueDate ? new Date(task.dueDate) <= to : false);
+    }
+
+    // Sorting
+    if (filter.sortBy) {
+      const dir = filter.sortDir === 'desc' ? -1 : 1;
+      const by = filter.sortBy;
+      const priorityOrder: Record<string, number> = { low: 0, normal: 1, high: 2, urgent: 3 };
+      const statusOrder: Record<string, number> = { 'todo': 0, 'in-progress': 1, 'review': 2, 'done': 3 };
+      filtered = [...filtered].sort((a, b) => {
+        let av: any = 0; let bv: any = 0;
+        switch (by) {
+          case 'dueDate':
+            av = a.dueDate ? new Date(a.dueDate).getTime() : Number.MAX_SAFE_INTEGER;
+            bv = b.dueDate ? new Date(b.dueDate).getTime() : Number.MAX_SAFE_INTEGER;
+            break;
+          case 'priority':
+            av = priorityOrder[a.priority] ?? 0; bv = priorityOrder[b.priority] ?? 0; break;
+          case 'status':
+            av = statusOrder[a.status] ?? 0; bv = statusOrder[b.status] ?? 0; break;
+          case 'createdAt':
+            av = new Date(a.createdAt).getTime(); bv = new Date(b.createdAt).getTime(); break;
+          case 'title':
+            return dir * a.title.localeCompare(b.title);
+        }
+        return dir * (av - bv);
+      });
     }
 
     return filtered;
@@ -253,15 +328,12 @@ function App() {
         };
       });
 
-      // Actualizar supabaseTasks localmente
-      supabaseTasks.forEach(t => {
-        if (t.id === taskId && t.task_subtasks) {
-          const subtask = t.task_subtasks.find(s => s.id === subtaskId);
-          if (subtask) {
-            subtask.completed = newCompleted;
-          }
-        }
-      });
+      // Actualizar supabaseTasks inmutablemente para forzar re-render inmediato
+      setLocalTasks(prev => prev.map(t => {
+        if (t.id !== taskId) return t
+        const subs = t.task_subtasks ? t.task_subtasks.map(s => s.id === subtaskId ? { ...s, completed: newCompleted } : s) : []
+        return { ...t, task_subtasks: subs }
+      }))
 
       // 2. Persistir en background
       await updateSubtask(subtaskId, { completed: newCompleted });
@@ -292,19 +364,12 @@ function App() {
         };
       });
 
-      // Actualizar supabaseTasks localmente
-      supabaseTasks.forEach(t => {
-        if (t.id === taskId) {
-          if (!t.task_subtasks) t.task_subtasks = [];
-          t.task_subtasks.push({
-            id: tempId,
-            title,
-            completed: false,
-            created_at: new Date().toISOString(),
-            position
-          });
-        }
-      });
+      // Actualizar supabaseTasks inmutablemente (optimista)
+      setLocalTasks(prev => prev.map(t => {
+        if (t.id !== taskId) return t
+        const existing = t.task_subtasks ? [...t.task_subtasks] : []
+        return { ...t, task_subtasks: [...existing, { id: tempId, title, completed: false, created_at: new Date().toISOString(), position }] }
+      }))
 
       // 2. Persistir en background
       const savedSubtask = await createSubtask({ 
@@ -326,15 +391,12 @@ function App() {
           };
         });
 
-        // Actualizar ID en supabaseTasks
-        supabaseTasks.forEach(t => {
-          if (t.id === taskId && t.task_subtasks) {
-            const subtask = t.task_subtasks.find(s => s.id === tempId);
-            if (subtask) {
-              subtask.id = savedSubtask.id;
-            }
-          }
-        });
+        // Actualizar ID en supabaseTasks de forma inmutable
+        setLocalTasks(prev => prev.map(t => {
+          if (t.id !== taskId) return t
+          const subs = (t.task_subtasks || []).map(s => s.id === tempId ? { ...s, id: savedSubtask.id } : s)
+          return { ...t, task_subtasks: subs }
+        }))
       }
 
       showSnackbar('Subtarea agregada', 'success');
@@ -355,12 +417,12 @@ function App() {
         };
       });
 
-      // Actualizar supabaseTasks localmente
-      supabaseTasks.forEach(t => {
-        if (t.id === taskId && t.task_subtasks) {
-          t.task_subtasks = t.task_subtasks.filter(s => s.id !== subtaskId);
-        }
-      });
+      // Actualizar supabaseTasks inmutablemente
+      setLocalTasks(prev => prev.map(t => {
+        if (t.id !== taskId) return t
+        const subs = (t.task_subtasks || []).filter(s => s.id !== subtaskId)
+        return { ...t, task_subtasks: subs }
+      }))
 
       // 2. Persistir en background
       await deleteSubtask(subtaskId);
@@ -463,6 +525,11 @@ function App() {
     setActiveView('tasks');
   };
 
+  const handleNavigateToContentCalendar = () => {
+    setSelectedProjectId(null);
+    setActiveView('content');
+  };
+
   const handleSaveProject = async (projectData: Partial<Project>) => {
     try {
       console.log('🔄 Iniciando guardado de proyecto...');
@@ -549,6 +616,15 @@ function App() {
 
   const handleConvertTaskToContent = (task: Task) => {
     console.log('Convert task to content:', task);
+  };
+
+  const handleChangeAssignee = async (taskId: string, assigneeId: string | null) => {
+    try {
+      await updateTask(taskId, { assignee_id: assigneeId });
+    } catch (e) {
+      console.error('Error updating assignee', e);
+      showSnackbar('Error al cambiar asignado', 'error');
+    }
   };
 
   const handleApprovalAction = (approvalId: string, action: 'approve' | 'reject', feedback?: string) => {
@@ -639,6 +715,7 @@ function App() {
           onEditContent={handleEditContent}
           onEditProject={handleEditProject}
           onBackToOverview={handleBackToOverview}
+          onNavigateToContentCalendar={handleNavigateToContentCalendar}
         />
       );
     }
@@ -653,6 +730,7 @@ function App() {
             onCreateContent={handleCreateContent}
             onEditContent={handleEditContent}
             onConvertTaskToContent={handleConvertTaskToContent}
+            onViewTask={handleViewTask}
           />
         );
       case 'campaigns':
@@ -672,8 +750,15 @@ function App() {
             onApprovalAction={handleApprovalAction}
           />
         );
+      case 'team':
+        return <Team />;
       default:
-        return (
+        return taskView === 'list' ? (
+          <TaskList
+            tasks={filteredTasks}
+            onTaskClick={handleViewTask}
+          />
+        ) : (
           <TaskBoard
             tasks={filteredTasks}
             onStatusChange={handleStatusChange}
@@ -712,7 +797,9 @@ function App() {
             onCreateTask={handleCreateTask}
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
-            user={user}
+            taskView={taskView}
+            onTaskViewChange={handleTaskViewChange}
+            assignees={supabaseProfiles}
           />
         )}
 
@@ -751,7 +838,7 @@ function App() {
         )}
 
         {/* Main Content Area */}
-        <div className={`flex-1 overflow-auto ${selectedProjectId ? '' : 'p-6'}`}>
+        <div className={`flex-1 overflow-auto ${selectedProjectId ? '' : (activeView === 'tasks' ? 'p-6' : '')}`}>
           {renderMainContent()}
         </div>
       </div>
@@ -766,7 +853,7 @@ function App() {
         }}
         onSave={handleSaveTask}
         onDelete={handleDeleteTask}
-        users={users}
+        users={selectableUsers}
         projectId={selectedProjectId || projects[0]?.id}
       />
 
@@ -785,17 +872,18 @@ function App() {
       {/* Task View Modal */}
       {selectedTask && (
         <TaskView
-          task={selectedTask}
+          task={tasks.find(t => t.id === selectedTask.id) || selectedTask}
           isOpen={isTaskViewOpen}
           onClose={() => setIsTaskViewOpen(false)}
-          onEdit={() => handleEditTask(selectedTask)}
+          onEdit={() => { setIsTaskViewOpen(false); handleEditTask(selectedTask); }}
           onDelete={handleDeleteTask}
           onStatusChange={handleStatusChange}
           onToggleSubtask={handleToggleSubtask}
           onAddSubtask={handleAddSubtask}
           onDeleteSubtask={handleDeleteSubtask}
           onReorderSubtasks={handleReorderSubtasks}
-          users={users}
+          users={selectableUsers}
+          onChangeAssignee={handleChangeAssignee}
           authorProfileId={supabaseProfiles.find(p => p.user_id === user?.id)?.id}
         />
       )}

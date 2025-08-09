@@ -14,9 +14,11 @@ import {
   Clock,
   CheckCircle,
   CheckCircle2,
-  XCircle
+  XCircle,
+  ExternalLink
 } from 'lucide-react';
 import { ContentItem, Task } from '../types';
+import DayViewModal from './DayViewModal';
 
 interface ContentCalendarProps {
   contentItems: ContentItem[];
@@ -24,6 +26,7 @@ interface ContentCalendarProps {
   onCreateContent: () => void;
   onEditContent: (content: ContentItem) => void;
   onConvertTaskToContent: (task: Task) => void;
+  onViewTask: (task: Task) => void;
 }
 
 const ContentCalendar: React.FC<ContentCalendarProps> = ({
@@ -32,9 +35,12 @@ const ContentCalendar: React.FC<ContentCalendarProps> = ({
   onCreateContent,
   onEditContent,
   onConvertTaskToContent,
+  onViewTask,
 }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [viewMode, setViewMode] = useState<'month' | 'week'>('month');
+  const [viewMode, setViewMode] = useState<'month' | 'week' | 'list'>('month');
+  const [selectedDay, setSelectedDay] = useState<Date | null>(null);
+  const [isDayViewOpen, setIsDayViewOpen] = useState(false);
 
   const getPlatformIcon = (platform: string) => {
     switch (platform) {
@@ -132,6 +138,16 @@ const ContentCalendar: React.FC<ContentCalendarProps> = ({
     });
   };
 
+  const handleDayClick = (date: Date) => {
+    setSelectedDay(date);
+    setIsDayViewOpen(true);
+  };
+
+  const handleCloseDayView = () => {
+    setIsDayViewOpen(false);
+    setSelectedDay(null);
+  };
+
   const navigateMonth = (direction: 'prev' | 'next') => {
     setCurrentDate(prev => {
       const newDate = new Date(prev);
@@ -156,10 +172,35 @@ const ContentCalendar: React.FC<ContentCalendarProps> = ({
     });
   };
 
+  const navigateList = (direction: 'prev' | 'next') => {
+    setCurrentDate(prev => {
+      const newDate = new Date(prev);
+      if (direction === 'prev') {
+        newDate.setDate(prev.getDate() - 28); // 4 weeks
+      } else {
+        newDate.setDate(prev.getDate() + 28); // 4 weeks
+      }
+      return newDate;
+    });
+  };
+
   const days = viewMode === 'month' ? getDaysInMonth(currentDate) : getDaysInWeek(currentDate);
-  const displayText = viewMode === 'month' 
-    ? currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
-    : `${getDaysInWeek(currentDate)[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${getDaysInWeek(currentDate)[6].toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+  
+  const getDisplayText = () => {
+    if (viewMode === 'month') {
+      return currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    } else if (viewMode === 'week') {
+      const weekDays = getDaysInWeek(currentDate);
+      return `${weekDays[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${weekDays[6].toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+    } else {
+      // List view - show 4 weeks range
+      const start = new Date(currentDate);
+      start.setDate(start.getDate() - start.getDay());
+      const end = new Date(start);
+      end.setDate(start.getDate() + 27); // 4 weeks - 1 day
+      return `${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+    }
+  };
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
@@ -189,22 +230,48 @@ const ContentCalendar: React.FC<ContentCalendarProps> = ({
               >
                 Week
               </button>
+              <button
+                onClick={() => setViewMode('list')}
+                className={`px-3 py-1 text-sm rounded-lg transition-colors ${
+                  viewMode === 'list' 
+                    ? 'bg-blue-100 text-blue-700' 
+                    : 'text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                List
+              </button>
             </div>
           </div>
           
           <div className="flex items-center space-x-3">
             <div className="flex items-center space-x-2">
               <button
-                onClick={() => viewMode === 'month' ? navigateMonth('prev') : navigateWeek('prev')}
+                onClick={() => {
+                  if (viewMode === 'month') {
+                    navigateMonth('prev');
+                  } else if (viewMode === 'week') {
+                    navigateWeek('prev');
+                  } else {
+                    navigateList('prev');
+                  }
+                }}
                 className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
               <span className="text-lg font-medium text-gray-900 min-w-[180px] text-center">
-                {displayText}
+                {getDisplayText()}
               </span>
               <button
-                onClick={() => viewMode === 'month' ? navigateMonth('next') : navigateWeek('next')}
+                onClick={() => {
+                  if (viewMode === 'month') {
+                    navigateMonth('next');
+                  } else if (viewMode === 'week') {
+                    navigateWeek('next');
+                  } else {
+                    navigateList('next');
+                  }
+                }}
                 className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
               >
                 <ChevronRight className="w-4 h-4" />
@@ -222,120 +289,247 @@ const ContentCalendar: React.FC<ContentCalendarProps> = ({
         </div>
       </div>
 
-      {/* Calendar Grid */}
+      {/* Calendar Grid / List */}
       <div className="p-6">
-        {/* Day Headers */}
-        <div className="grid grid-cols-7 gap-px mb-2">
-          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-            <div key={day} className="p-2 text-center text-sm font-medium text-gray-500">
-              {day}
+        {viewMode === 'list' ? (
+          <div className="bg-white">
+            {(() => {
+              // compute 4 weeks starting from current week's start
+              const start = new Date(currentDate); start.setDate(start.getDate() - start.getDay());
+              const weeks = Array.from({ length: 4 }).map((_, wi) => {
+                const weekStart = new Date(start); weekStart.setDate(start.getDate() + wi * 7);
+                const days = Array.from({ length: 7 }).map((__, di) => {
+                  const d = new Date(weekStart); d.setDate(weekStart.getDate() + di); return d;
+                });
+                return { weekStart, days };
+              });
+              return (
+                <div className="space-y-6">
+                  {weeks.map(({ weekStart, days }, idx) => (
+                    <div key={idx} className="border border-gray-200 rounded-lg overflow-hidden">
+                      <div className="px-4 py-2 bg-gray-50 border-b text-sm text-gray-600">
+                        Week of {weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </div>
+                      <ul className="divide-y">
+                        {days.map((d, di) => {
+                          const dayContent = getContentForDate(d)
+                          const dayTasks = getTasksForDate(d)
+                          const allEntries = [
+                            ...dayContent.map(c => ({ type: 'content' as const, c })),
+                            ...dayTasks.map(t => ({ type: 'task' as const, t })),
+                          ]
+                          const entries = allEntries.slice(0, 2)
+                          if (entries.length === 0) {
+                            return (
+                              <li key={di} className="flex items-start gap-4 p-3">
+                                <div className="w-32 shrink-0 text-sm text-gray-500">
+                                  <div className="font-medium">{d.toLocaleDateString('en-US', { weekday: 'short' })}</div>
+                                  <div>{d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
+                                </div>
+                                <div className="flex-1 flex items-center justify-between">
+                                  <span className="text-sm text-gray-400">No items</span>
+                                  <button
+                                    onClick={() => handleDayClick(d)}
+                                    className="text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-50 px-2 py-1 rounded transition-colors"
+                                  >
+                                    View Day
+                                  </button>
+                                </div>
+                              </li>
+                            )
+                          }
+                          return (
+                            <li key={di} className="flex items-start gap-4 p-3">
+                              <div className="w-32 shrink-0 text-sm text-gray-500">
+                                <div className="font-medium">{d.toLocaleDateString('en-US', { weekday: 'short' })}</div>
+                                <div>{d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
+                              </div>
+                              <div className="flex-1 space-y-2">
+                                {entries.map((e, i) => e.type === 'content' ? (
+                                  <div key={`c-${i}`} onClick={() => onEditContent(e.c)} className={`p-2 rounded border hover:shadow-sm cursor-pointer transition ${getPlatformColor(e.c.platform)}`}>
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-2">
+                                        {getPlatformIcon(e.c.platform)}
+                                        <span className="font-medium truncate">{e.c.title}</span>
+                                      </div>
+                                      <div className="text-xs opacity-75">
+                                        {e.c.scheduledDate?.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                                      </div>
+                                    </div>
+                                    <div className="text-xs opacity-75 mt-1 capitalize">{e.c.status}</div>
+                                  </div>
+                                ) : (
+                                  <div 
+                                    key={`t-${i}`} 
+                                    onClick={() => onViewTask(e.t)}
+                                    className={`p-2 rounded border cursor-pointer hover:shadow-sm transition ${
+                                      e.t.status==='done' ? 'bg-green-50 border-green-200 hover:bg-green-100' : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                                    }`}
+                                  >
+                                    <div className="flex items-center justify-between">
+                                      <span className="font-medium truncate">{e.t.title}</span>
+                                      <span className="text-xs capitalize opacity-75">{e.t.priority}</span>
+                                    </div>
+                                  </div>
+                                ))}
+                                <div className="flex justify-end">
+                                  <button
+                                    onClick={() => handleDayClick(d)}
+                                    className="text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-50 px-2 py-1 rounded transition-colors flex items-center gap-1"
+                                  >
+                                    <ExternalLink className="w-3 h-3" />
+                                    View All ({allEntries.length})
+                                  </button>
+                                </div>
+                              </div>
+                            </li>
+                          )
+                        })}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              )
+            })()}
+          </div>
+        ) : (
+          <>
+            {/* Day Headers */}
+            <div className="grid grid-cols-7 gap-px mb-2">
+              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                <div key={day} className="p-2 text-center text-sm font-medium text-gray-500">
+                  {day}
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
 
-        {/* Calendar Days */}
-        <div className="grid grid-cols-7 gap-px bg-gray-200 rounded-lg overflow-hidden">
-          {days.map((day, index) => {
-            const dayContent = getContentForDate(day);
-            const dayTasks = getTasksForDate(day);
-            const isToday = day && 
-              day.getDate() === new Date().getDate() &&
-              day.getMonth() === new Date().getMonth() &&
-              day.getFullYear() === new Date().getFullYear();
+            {/* Calendar Days */}
+            <div className="grid grid-cols-7 gap-px bg-gray-200 rounded-lg overflow-hidden">
+              {days.map((day, index) => {
+                const dayContent = getContentForDate(day);
+                const dayTasks = getTasksForDate(day);
+                const isToday = day && 
+                  day.getDate() === new Date().getDate() &&
+                  day.getMonth() === new Date().getMonth() &&
+                  day.getFullYear() === new Date().getFullYear();
 
-            return (
-              <div
+                return (
+                                <div
                 key={index}
                 className={`bg-white p-2 min-h-[120px] ${
-                  day ? 'hover:bg-gray-50' : 'bg-gray-50'
+                  day ? 'hover:bg-gray-50 cursor-pointer' : 'bg-gray-50'
                 } transition-colors`}
+                onClick={() => day && handleDayClick(day)}
               >
-                {day && (
-                  <>
-                    <div className={`text-sm font-medium mb-2 ${
-                      isToday ? 'text-blue-600' : 'text-gray-900'
-                    }`}>
-                      {day.getDate()}
-                      {isToday && (
-                        <div className="w-2 h-2 bg-blue-600 rounded-full inline-block ml-1" />
-                      )}
-                    </div>
-                    
-                    <div className="space-y-1">
-                      {/* Content Items */}
-                      {dayContent.slice(0, 2).map(content => (
-                        <div
-                          key={content.id}
-                          onClick={() => onEditContent(content)}
-                          className={`p-1 rounded text-xs border cursor-pointer hover:shadow-sm transition-all ${getPlatformColor(content.platform)}`}
-                        >
-                          <div className="flex items-center space-x-1">
-                            {getPlatformIcon(content.platform)}
-                            {getStatusIcon(content.status)}
-                          </div>
-                          <div className="truncate mt-1 font-medium">
-                            {content.title}
-                          </div>
-                          {content.scheduledDate && (
-                            <div className="text-xs opacity-75">
-                              {content.scheduledDate.toLocaleTimeString('en-US', { 
-                                hour: 'numeric', 
-                                minute: '2-digit' 
-                              })}
+                    {day && (
+                      <>
+                        <div className={`text-sm font-medium mb-2 ${
+                          isToday ? 'text-blue-600' : 'text-gray-900'
+                        }`}>
+                          {day.getDate()}
+                          {isToday && (
+                            <div className="w-2 h-2 bg-blue-600 rounded-full inline-block ml-1" />
+                          )}
+                        </div>
+                        
+                        <div className="space-y-1">
+                          {/* Combined Items (max 2 total) */}
+                          {(() => {
+                            const allItems = [
+                              ...dayContent.map(c => ({ type: 'content' as const, item: c })),
+                              ...dayTasks.map(t => ({ type: 'task' as const, item: t }))
+                            ].slice(0, 2);
+                            
+                            return allItems.map((item, index) => 
+                              item.type === 'content' ? (
+                                <div
+                                  key={item.item.id}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onEditContent(item.item);
+                                  }}
+                                  className={`p-1 rounded text-xs border cursor-pointer hover:shadow-sm transition-all ${getPlatformColor(item.item.platform)}`}
+                                >
+                                  <div className="flex items-center space-x-1">
+                                    {getPlatformIcon(item.item.platform)}
+                                    {getStatusIcon(item.item.status)}
+                                  </div>
+                                  <div className="truncate mt-1 font-medium">
+                                    {item.item.title}
+                                  </div>
+                                  {item.item.scheduledDate && (
+                                    <div className="text-xs opacity-75">
+                                      {item.item.scheduledDate.toLocaleTimeString('en-US', { 
+                                        hour: 'numeric', 
+                                        minute: '2-digit' 
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <div
+                                  key={item.item.id}
+                                  className={`p-1 rounded text-xs border cursor-pointer hover:shadow-sm transition-all ${
+                                    item.item.status === 'done' 
+                                      ? 'bg-green-50 border-green-200 hover:bg-green-100' 
+                                      : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                                  }`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onViewTask(item.item);
+                                  }}
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center space-x-1">
+                                      {item.item.status === 'done' ? (
+                                        <CheckCircle2 className="w-3 h-3 text-green-600" />
+                                      ) : (
+                                        <XCircle className="w-3 h-3 text-gray-400" />
+                                      )}
+                                      <span className="text-xs font-medium">Task</span>
+                                    </div>
+                                  </div>
+                                  <div className="truncate mt-1 font-medium">
+                                    {item.item.title}
+                                  </div>
+                                  <div className="text-xs opacity-75">
+                                    {item.item.priority}
+                                  </div>
+                                </div>
+                              )
+                            );
+                          })()}
+                          
+                          {/* Show more indicators */}
+                          {(dayContent.length + dayTasks.length > 2) && (
+                            <div className="text-xs text-gray-500 text-center py-1">
+                              +{dayContent.length + dayTasks.length - 2} more
                             </div>
                           )}
                         </div>
-                      ))}
-                      
-                      {/* Tasks */}
-                      {dayTasks.slice(0, 2).map(task => (
-                        <div
-                          key={task.id}
-                          className={`p-1 rounded text-xs border ${
-                            task.status === 'done' 
-                              ? 'bg-green-50 border-green-200 cursor-pointer hover:bg-green-100' 
-                              : 'bg-gray-50 border-gray-200 opacity-50 cursor-not-allowed'
-                          } transition-all`}
-                          onClick={() => task.status === 'done' && onConvertTaskToContent(task)}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-1">
-                              {task.status === 'done' ? (
-                                <CheckCircle2 className="w-3 h-3 text-green-600" />
-                              ) : (
-                                <XCircle className="w-3 h-3 text-gray-400" />
-                              )}
-                              <span className="text-xs font-medium">Task</span>
-                            </div>
-                            {task.status === 'done' && (
-                              <button className="text-xs text-blue-600 hover:text-blue-800">
-                                +Content
-                              </button>
-                            )}
-                          </div>
-                          <div className="truncate mt-1 font-medium">
-                            {task.title}
-                          </div>
-                          <div className="text-xs opacity-75">
-                            {task.priority}
-                          </div>
-                        </div>
-                      ))}
-                      
-                      {/* Show more indicators */}
-                      {(dayContent.length > 2 || dayTasks.length > 2) && (
-                        <div className="text-xs text-gray-500 text-center py-1">
-                          +{Math.max(dayContent.length - 2, dayTasks.length - 2)} more
-                        </div>
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
-            );
-          })}
-        </div>
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
       </div>
+
+      {/* Day View Modal */}
+      {selectedDay && (
+        <DayViewModal
+          isOpen={isDayViewOpen}
+          onClose={handleCloseDayView}
+          date={selectedDay}
+          tasks={getTasksForDate(selectedDay)}
+          contentItems={getContentForDate(selectedDay)}
+          onViewTask={onViewTask}
+          onEditContent={onEditContent}
+          onConvertTaskToContent={onConvertTaskToContent}
+        />
+      )}
     </div>
   );
 };
