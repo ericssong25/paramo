@@ -243,7 +243,7 @@ content_items (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   title TEXT NOT NULL,
   description TEXT,
-  type TEXT NOT NULL CHECK (type IN ('post', 'story', 'video', 'article', 'campaign')),
+  type TEXT NOT NULL CHECK (type IN ('post', 'story', 'video', 'article')),
   platform TEXT NOT NULL CHECK (platform IN ('instagram', 'facebook', 'twitter', 'linkedin', 'tiktok', 'youtube', 'blog')),
   status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'review', 'approved', 'scheduled', 'published')),
   scheduled_date TIMESTAMP WITH TIME ZONE,
@@ -264,7 +264,7 @@ content_items (
 - `id`: Identificador único del contenido
 - `title`: Título del contenido
 - `description`: Descripción del contenido
-- `type`: Tipo de contenido (post, story, video, article, campaign)
+- `type`: Tipo de contenido (post, story, video, article)
 - `platform`: Plataforma (instagram, facebook, twitter, linkedin, tiktok, youtube, blog)
 - `status`: Estado del contenido (draft, review, approved, scheduled, published)
 - `scheduled_date`: Fecha programada de publicación
@@ -278,6 +278,84 @@ content_items (
 - `engagement_metrics`: Objeto JSON con métricas (likes, comments, shares, views)
 - `created_at`: Fecha de creación
 - `updated_at`: Fecha de última actualización
+
+---
+
+### **8. `subscriptions` - Suscripciones**
+Gestión de suscripciones a servicios y herramientas.
+
+```sql
+subscriptions (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  service_name TEXT NOT NULL,
+  subscription_type TEXT NOT NULL CHECK (subscription_type IN ('weekly', 'biweekly', 'monthly', 'quarterly', 'semiannual', 'annual')),
+  currency TEXT NOT NULL DEFAULT 'USD',
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'paused', 'cancelled', 'expired', 'pending')),
+  last_renewal_date DATE NOT NULL,
+  next_due_date DATE NOT NULL,
+  payment_method TEXT NOT NULL,
+  responsible_id UUID REFERENCES profiles(id),
+  notes TEXT,
+  alerts BOOLEAN DEFAULT FALSE,
+  management_url TEXT,
+  access_credentials TEXT,
+  cost DECIMAL(10,2) NOT NULL DEFAULT 0,
+  project_id UUID REFERENCES projects(id) ON DELETE SET NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+)
+```
+
+**Campos:**
+- `id`: Identificador único de la suscripción
+- `service_name`: Nombre del servicio suscrito
+- `subscription_type`: Tipo de suscripción (weekly, biweekly, monthly, quarterly, semiannual, annual)
+- `currency`: Moneda del costo (USD, EUR, etc.)
+- `status`: Estado de la suscripción (active, paused, cancelled, expired, pending)
+- `last_renewal_date`: Fecha de la última renovación
+- `next_due_date`: Fecha del próximo vencimiento
+- `payment_method`: Método de pago utilizado
+- `responsible_id`: Referencia al usuario responsable
+- `notes`: Notas adicionales sobre la suscripción
+- `alerts`: Si se deben mostrar alertas para esta suscripción
+- `management_url`: URL directa para administrar la suscripción
+- `access_credentials`: Credenciales de acceso (JSON: {username: string, password?: string})
+- `cost`: Costo de la suscripción
+- `project_id`: Referencia al proyecto asociado (opcional)
+- `created_at`: Fecha de creación
+- `updated_at`: Fecha de última actualización
+
+---
+
+### **9. `subscription_payments` - Historial de Pagos**
+Registro de pagos realizados para las suscripciones.
+
+```sql
+subscription_payments (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  subscription_id UUID REFERENCES subscriptions(id) ON DELETE CASCADE,
+  amount DECIMAL(10,2) NOT NULL,
+  currency TEXT NOT NULL DEFAULT 'USD',
+  payment_date DATE NOT NULL,
+  payment_method TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'completed' CHECK (status IN ('completed', 'pending', 'failed')),
+  transaction_id TEXT,
+  notes TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+)
+```
+
+**Campos:**
+- `id`: Identificador único del pago
+- `subscription_id`: Referencia a la suscripción
+- `amount`: Monto del pago
+- `currency`: Moneda del pago
+- `payment_date`: Fecha del pago
+- `payment_method`: Método de pago utilizado
+- `status`: Estado del pago (completed, pending, failed)
+- `transaction_id`: ID de transacción del proveedor de pagos
+- `notes`: Notas adicionales sobre el pago
+- `created_at`: Fecha de creación
 
 ---
 
@@ -303,6 +381,16 @@ content_items (
 - ✅ **Crear/Editar**: Todos pueden crear y editar contenido
 - ✅ **Eliminar**: Solo admins pueden eliminar contenido
 
+#### **Subscriptions:**
+- ✅ **Ver todos**: Todos pueden ver todas las suscripciones
+- ✅ **Crear/Editar**: Todos pueden crear y editar suscripciones
+- ✅ **Eliminar**: Solo admins pueden eliminar suscripciones
+
+#### **Subscription Payments:**
+- ✅ **Ver todos**: Todos pueden ver todos los pagos
+- ✅ **Crear/Editar**: Todos pueden crear y editar pagos
+- ✅ **Eliminar**: Solo admins pueden eliminar pagos
+
 ---
 
 ## 📈 Índices Optimizados
@@ -318,6 +406,18 @@ content_items (
 - `idx_content_items_assignee_id`: Filtrado por usuario asignado
 - `idx_content_items_status`: Filtrado por estado
 - `idx_content_items_scheduled_date`: Filtrado por fecha programada
+
+### **Suscripciones:**
+- `idx_subscriptions_status`: Filtrado por estado
+- `idx_subscriptions_responsible_id`: Filtrado por usuario responsable
+- `idx_subscriptions_project_id`: Filtrado por proyecto
+- `idx_subscriptions_next_due_date`: Filtrado por fecha de vencimiento
+- `idx_subscriptions_service_name`: Búsqueda por nombre de servicio
+
+### **Pagos de Suscripciones:**
+- `idx_subscription_payments_subscription_id`: Filtrado por suscripción
+- `idx_subscription_payments_payment_date`: Filtrado por fecha de pago
+- `idx_subscription_payments_status`: Filtrado por estado de pago
 
 ### **Proyectos:**
 - `idx_projects_status`: Filtrado por estado
@@ -352,6 +452,26 @@ Obtiene estadísticas de un proyecto específico.
 - `completed_tasks`: Número de tareas completadas
 - `progress_percentage`: Porcentaje de progreso
 
+### **`get_upcoming_subscriptions(days_ahead INTEGER DEFAULT 30)`**
+Obtiene suscripciones próximas a vencer en los próximos días.
+
+**Retorna:**
+- `id`: ID de la suscripción
+- `service_name`: Nombre del servicio
+- `next_due_date`: Fecha de próximo vencimiento
+- `cost`: Costo de la suscripción
+- `currency`: Moneda
+- `responsible_name`: Nombre del responsable
+
+### **`get_subscription_stats()`**
+Obtiene estadísticas generales de suscripciones.
+
+**Retorna:**
+- `total_subscriptions`: Número total de suscripciones
+- `active_subscriptions`: Número de suscripciones activas
+- `total_monthly_cost`: Costo total mensual de suscripciones activas
+- `overdue_subscriptions`: Número de suscripciones vencidas
+
 ---
 
 ## 🔄 Triggers Automáticos
@@ -364,6 +484,7 @@ Función que actualiza automáticamente el campo `updated_at` cuando se modifica
 - ✅ `projects`
 - ✅ `tasks`
 - ✅ `content_items`
+- ✅ `subscriptions`
 
 ---
 
@@ -381,6 +502,8 @@ project_milestones
 tasks ←→ task_subtasks
     ↓ (1:N)
 content_items
+    ↓ (1:N)
+subscriptions ←→ subscription_payments
 ```
 
 ---
@@ -398,6 +521,8 @@ const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 - `useTasks()`: CRUD + filtros por proyecto/usuario
 - `useContentItems()`: CRUD de contenido
 - `useProfiles()`: Gestión de usuarios
+- `useSubscriptions()`: CRUD de suscripciones (pendiente de implementar)
+- `useSubscriptionPayments()`: CRUD de pagos de suscripciones (pendiente de implementar)
 
 ---
 
@@ -424,6 +549,21 @@ const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 ### **Tipos de Proyectos:**
 - `finite`: Proyecto con fecha de fin
 - `recurring`: Servicio recurrente
+
+### **Estados de Suscripciones:**
+- `active`: Suscripción activa
+- `paused`: Suscripción pausada
+- `cancelled`: Suscripción cancelada
+- `expired`: Suscripción expirada
+- `pending`: Suscripción pendiente
+
+### **Tipos de Suscripciones:**
+- `weekly`: Semanal
+- `biweekly`: Quincenal
+- `monthly`: Mensual
+- `quarterly`: Trimestral
+- `semiannual`: Semestral
+- `annual`: Anual
 
 ---
 
@@ -482,3 +622,219 @@ where r.id = t.id;
 -- 5) Asegurar orden por defecto en lecturas (se sugiere en consultas)
 -- select ... from task_subtasks where task_id = ? order by position asc, created_at asc;
 ```
+
+---
+
+### 9. Migración: Tablas de Suscripciones
+
+Para crear las tablas de suscripciones y pagos, ejecuta el script completo en `subscriptions_table.sql`:
+
+```sql
+-- Ejecutar el archivo subscriptions_table.sql completo
+-- Este script incluye:
+-- - Creación de tablas subscriptions y subscription_payments
+-- - Índices optimizados
+-- - Políticas RLS
+-- - Funciones útiles
+-- - Datos de ejemplo
+-- - Comentarios de documentación
+```
+
+**Nota:** El script está diseñado para ser ejecutado completo y maneja automáticamente:
+- Creación de tablas si no existen
+- Configuración de RLS
+- Creación de índices
+- Inserción de datos de ejemplo
+- Documentación completa
+
+---
+
+### 10. Migración: Estructura de Access Credentials
+
+#### **Nueva Estructura JSON:**
+El campo `access_credentials` ahora utiliza una estructura JSON para separar username y password:
+
+```json
+{
+  "username": "string (requerido)",
+  "password": "string (opcional)"
+}
+```
+
+#### **Actualización de Credenciales Existentes:**
+Para actualizar todas las suscripciones existentes con credenciales aleatorias, ejecuta el script `update_access_credentials.sql`:
+
+```sql
+-- Ejecutar el archivo update_access_credentials.sql completo
+-- Este script:
+-- - Actualiza todas las suscripciones con access_credentials NULL
+-- - Genera credenciales aleatorias basadas en el nombre del servicio
+-- - Utiliza formato JSON con username y password separados
+-- - Incluye verificaciones y conteos de actualización
+```
+
+**Ejemplos de credenciales generadas:**
+- **Netflix**: `{"username": "user_a1b2c3d4", "password": "Netflix1a2b3c!"}`
+- **Spotify**: `{"username": "spotify_1a2b3c", "password": "Spotify1a2b3c!"}`
+- **Adobe**: `{"username": "adobe_a1b2c3d4", "password": "Adobe1a2b3c!"}`
+- **Figma**: `{"username": "figma_a1b2c3d4", "password": "Figma1a2b3c!"}`
+
+#### **Cambios en la Aplicación:**
+- El modal de creación/edición ahora tiene campos separados para username y password
+- El campo username es obligatorio, password es opcional
+- La vista detallada muestra las credenciales por separado
+- Se mantiene compatibilidad con el formato JSON en la base de datos
+
+---
+
+## 11. Sistema de Seguridad PIN para Credenciales
+
+### Descripción General
+Se ha implementado un sistema de seguridad basado en PIN para proteger el acceso a las credenciales de las suscripciones. Este sistema permite configurar un PIN de seguridad que debe ser ingresado para visualizar las credenciales de acceso.
+
+### Componentes del Sistema
+
+#### 11.1 Hook de Seguridad (`usePinSecurity`)
+- **Archivo**: `src/hooks/usePinSecurity.ts`
+- **Funcionalidades**:
+  - Configurar PIN de seguridad
+  - Verificar PIN ingresado
+  - Gestionar estado de autenticación
+  - Persistir PIN en localStorage
+  - Limpiar PIN y estado de autenticación
+
+#### 11.2 Modal de PIN (`PinModal`)
+- **Archivo**: `src/components/PinModal.tsx`
+- **Funcionalidades**:
+  - Configurar nuevo PIN (mínimo 4 dígitos)
+  - Verificar PIN existente
+  - Validación de coincidencia de PINs
+  - Manejo de errores y estados de carga
+  - Interfaz intuitiva con iconos y mensajes claros
+
+#### 11.3 Modal de Visualización de Credenciales (`CredentialViewModal`)
+- **Archivo**: `src/components/CredentialViewModal.tsx`
+- **Funcionalidades**:
+  - Mostrar credenciales después de verificación PIN
+  - Copiar credenciales al portapapeles
+  - Toggle de visibilidad de contraseña
+  - Botón para editar credenciales (solo visible si hay credenciales)
+
+#### 11.4 Modal de Edición de Credenciales (`CredentialEditModal`)
+- **Archivo**: `src/components/CredentialEditModal.tsx`
+- **Funcionalidades**:
+  - Editar username (obligatorio) y password (opcional)
+  - Validación de campos
+  - Copiar credenciales al portapapeles
+  - Toggle de visibilidad de contraseña
+  - Guardar cambios en la base de datos
+
+### Flujos de Credenciales
+
+#### 11.5 Creación de Suscripción
+- **Ubicación**: `SubscriptionModal` (solo en modo creación)
+- **Comportamiento**:
+  - Los campos de credenciales (username y password) están disponibles
+  - Username es obligatorio, password es opcional
+  - Las credenciales se guardan junto con la suscripción
+  - No requiere PIN para agregar credenciales durante la creación
+
+#### 11.6 Edición de Suscripción
+- **Ubicación**: `SubscriptionModal` (modo edición)
+- **Comportamiento**:
+  - Los campos de credenciales están **ocultos**
+  - No se pueden editar credenciales desde el modal principal
+  - Solo se pueden editar otros campos de la suscripción
+
+#### 11.7 Visualización de Credenciales desde Cards
+- **Ubicación**: `SubscriptionDashboard` → Cards de suscripciones
+- **Comportamiento**:
+  - Al hacer clic en el ícono de "Ver credenciales" se abre el `PinModal`
+  - Si no hay PIN configurado, se solicita configurar uno
+  - Si hay PIN configurado, se solicita ingresarlo
+  - Tras verificación exitosa, se abre `CredentialViewModal` con las credenciales
+  - Desde `CredentialViewModal` se puede copiar credenciales o editar (botón "Editar")
+  - El botón "Editar" abre `CredentialEditModal` para modificar credenciales
+
+#### 11.8 Visualización de Credenciales en Detalle
+- **Ubicación**: `SubscriptionDetailModal` (vista detallada)
+- **Comportamiento**:
+  - Las credenciales se muestran inicialmente **censuradas**:
+    - Username: parcialmente oculto (ej: "us***@email.com")
+    - Password: completamente oculto ("••••••••••••••••")
+  - Al hacer clic en el ícono de "Ver credenciales" se abre el `PinModal`
+  - Tras verificación exitosa, las credenciales se **revelan en el mismo modal**
+  - Aparece un botón "Editar" que abre `CredentialEditModal`
+  - Se pueden copiar credenciales individuales al portapapeles
+
+### Configuración del PIN
+
+#### 11.9 Configuración en Settings
+- **Ubicación**: `SettingsModal`
+- **Funcionalidades**:
+  - Configurar nuevo PIN de seguridad
+  - Cambiar PIN existente
+  - Eliminar PIN (desactiva la protección)
+  - Validación de longitud mínima (4 dígitos)
+  - Confirmación de PIN para evitar errores
+
+### Seguridad y Persistencia
+
+#### 11.10 Almacenamiento
+- El PIN se almacena en `localStorage` del navegador
+- Se utiliza encriptación básica para el almacenamiento
+- El estado de autenticación se mantiene durante la sesión
+- Se puede limpiar manualmente desde Settings
+
+#### 11.11 Validaciones
+- PIN mínimo de 4 dígitos
+- Confirmación obligatoria al configurar
+- Mensajes de error claros para el usuario
+- Timeout de sesión (se puede implementar)
+
+### Integración con Componentes Existentes
+
+#### 11.12 Modificaciones Realizadas
+- `SubscriptionDashboard`: Integración de modales de credenciales
+- `SubscriptionDetailModal`: Sistema de censura y revelación
+- `SettingsModal`: Configuración de PIN
+- `SubscriptionModal`: Restricción de edición de credenciales
+- `App.tsx`: Manejo de actualización de credenciales
+
+#### 11.13 Props y Interfaces
+- Se agregaron props para manejo de credenciales
+- Interfaces actualizadas para incluir funciones de actualización
+- Manejo de estados para modales de credenciales
+
+### Uso del Sistema
+
+#### 11.14 Primer Uso
+1. Ir a Settings → Configurar PIN de Seguridad
+2. Establecer PIN de 4+ dígitos
+3. Confirmar PIN
+4. El sistema está listo para proteger credenciales
+
+#### 11.15 Visualización de Credenciales
+1. Hacer clic en "Ver credenciales" en cualquier suscripción
+2. Ingresar PIN de seguridad
+3. Las credenciales se revelan en modal dedicado
+4. Opciones disponibles: copiar, editar, cerrar
+
+#### 11.16 Edición de Credenciales
+1. Desde modal de visualización, hacer clic en "Editar"
+2. Modificar username y/o password
+3. Guardar cambios
+4. Los cambios se reflejan inmediatamente en la base de datos
+
+### Notas de Seguridad
+
+#### 11.17 Limitaciones Actuales
+- El PIN se almacena en localStorage (no es 100% seguro)
+- No hay timeout automático de sesión
+- No hay límite de intentos de PIN
+
+#### 11.18 Mejoras Futuras Posibles
+- Implementar timeout de sesión
+- Límite de intentos de PIN
+- Encriptación más robusta del PIN
+- Integración con autenticación del sistema

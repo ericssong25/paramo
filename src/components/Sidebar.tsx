@@ -6,7 +6,7 @@ import {
   Settings,
   Search,
   Home,
-  Megaphone,
+  CreditCard,
   Image,
   CheckSquare,
   TrendingUp,
@@ -131,15 +131,15 @@ const Sidebar: React.FC<SidebarProps> = ({
           </button>
 
           <button 
-            onClick={() => onViewChange('campaigns')}
+            onClick={() => onViewChange('subscriptions')}
             className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors ${
-              activeView === 'campaigns'
+              activeView === 'subscriptions'
                 ? 'bg-blue-50 text-blue-700'
                 : 'text-gray-700 hover:bg-gray-50'
             }`}
           >
-            <Megaphone className="w-4 h-4" />
-            <span className="text-sm font-medium">Campaigns</span>
+            <CreditCard className="w-4 h-4" />
+            <span className="text-sm font-medium">Subscriptions</span>
           </button>
 
           <button 

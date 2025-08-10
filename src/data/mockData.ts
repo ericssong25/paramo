@@ -1,4 +1,4 @@
-import { User, Project, Task, ContentItem, Campaign, Client, Approval } from '../types';
+import { User, Project, Task, ContentItem, Client, Approval } from '../types';
 
 export const mockUsers: User[] = [
   {
@@ -351,48 +351,7 @@ export const mockContentItems: ContentItem[] = [
   },
 ];
 
-export const mockCampaigns: Campaign[] = [
-  {
-    id: '990e8400-e29b-41d4-a716-446655440001',
-    name: 'Q1 Product Launch',
-    description: 'Comprehensive campaign for new product launch across all social platforms',
-    type: 'awareness',
-    status: 'active',
-    startDate: new Date('2024-01-15'),
-    endDate: new Date('2024-03-15'),
-    budget: 15000,
-    platforms: ['instagram', 'facebook', 'twitter', 'linkedin'],
-    targetAudience: 'Tech professionals, project managers, startup founders',
-    kpis: ['Brand awareness', 'Website traffic', 'Lead generation', 'Social engagement'],
-    contentItems: ['880e8400-e29b-41d4-a716-446655440001', '880e8400-e29b-41d4-a716-446655440002'],
-    metrics: {
-      reach: 125000,
-      impressions: 450000,
-      engagement: 8500,
-      conversions: 320,
-      roi: 2.4,
-    },
-    createdAt: new Date('2024-01-10'),
-    updatedAt: new Date('2024-01-22'),
-    projectId: '660e8400-e29b-41d4-a716-446655440003',
-  },
-  {
-    id: '990e8400-e29b-41d4-a716-446655440002',
-    name: 'Community Building Initiative',
-    description: 'Focus on building and engaging our community through valuable content',
-    type: 'engagement',
-    status: 'planning',
-    startDate: new Date('2024-02-01'),
-    endDate: new Date('2024-04-30'),
-    platforms: ['instagram', 'twitter', 'linkedin', 'blog'],
-    targetAudience: 'Existing customers, industry professionals',
-    kpis: ['Community growth', 'Engagement rate', 'User-generated content', 'Customer satisfaction'],
-    contentItems: ['880e8400-e29b-41d4-a716-446655440003'],
-    createdAt: new Date('2024-01-18'),
-    updatedAt: new Date('2024-01-20'),
-    projectId: '660e8400-e29b-41d4-a716-446655440001',
-  },
-];
+
 
 export const mockClients: Client[] = [
   {

@@ -181,7 +181,7 @@ export interface Database {
           id: string
           title: string
           description: string | null
-          type: 'post' | 'story' | 'video' | 'article' | 'campaign'
+          type: 'post' | 'story' | 'video' | 'article'
           platform: 'instagram' | 'facebook' | 'twitter' | 'linkedin' | 'tiktok' | 'youtube' | 'blog'
           status: 'draft' | 'review' | 'approved' | 'scheduled' | 'published'
           scheduled_date: string | null
@@ -200,7 +200,7 @@ export interface Database {
           id?: string
           title: string
           description?: string | null
-          type: 'post' | 'story' | 'video' | 'article' | 'campaign'
+          type: 'post' | 'story' | 'video' | 'article'
           platform: 'instagram' | 'facebook' | 'twitter' | 'linkedin' | 'tiktok' | 'youtube' | 'blog'
           status?: 'draft' | 'review' | 'approved' | 'scheduled' | 'published'
           scheduled_date?: string | null
@@ -219,7 +219,7 @@ export interface Database {
           id?: string
           title?: string
           description?: string | null
-          type?: 'post' | 'story' | 'video' | 'article' | 'campaign'
+          type?: 'post' | 'story' | 'video' | 'article'
           platform?: 'instagram' | 'facebook' | 'twitter' | 'linkedin' | 'tiktok' | 'youtube' | 'blog'
           status?: 'draft' | 'review' | 'approved' | 'scheduled' | 'published'
           scheduled_date?: string | null
@@ -261,29 +261,123 @@ export interface Database {
           position?: number | null
         }
       }
-      task_comments: {
-        Row: {
-          id: string
-          task_id: string
-          author_id: string
-          content: string
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          task_id: string
-          author_id: string
-          content: string
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          task_id?: string
-          author_id?: string
-          content?: string
-          created_at?: string
-        }
-      }
+             task_comments: {
+         Row: {
+           id: string
+           task_id: string
+           author_id: string
+           content: string
+           created_at: string
+         }
+         Insert: {
+           id?: string
+           task_id: string
+           author_id: string
+           content: string
+           created_at?: string
+         }
+         Update: {
+           id?: string
+           task_id?: string
+           author_id?: string
+           content?: string
+           created_at?: string
+         }
+       }
+       subscriptions: {
+         Row: {
+           id: string
+           service_name: string
+           subscription_type: 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'semiannual' | 'annual'
+           currency: string
+           status: 'active' | 'paused' | 'cancelled' | 'expired' | 'pending'
+           last_renewal_date: string
+           next_due_date: string
+           payment_method: string
+           responsible_id: string | null
+           notes: string | null
+           alerts: boolean
+           management_url: string | null
+           access_credentials: string | null
+           cost: number
+           project_id: string | null
+           created_at: string
+           updated_at: string
+         }
+         Insert: {
+           id?: string
+           service_name: string
+           subscription_type: 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'semiannual' | 'annual'
+           currency?: string
+           status?: 'active' | 'paused' | 'cancelled' | 'expired' | 'pending'
+           last_renewal_date: string
+           next_due_date: string
+           payment_method: string
+           responsible_id?: string | null
+           notes?: string | null
+           alerts?: boolean
+           management_url?: string | null
+           access_credentials?: string | null
+           cost: number
+           project_id?: string | null
+           created_at?: string
+           updated_at?: string
+         }
+         Update: {
+           id?: string
+           service_name?: string
+           subscription_type?: 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'semiannual' | 'annual'
+           currency?: string
+           status?: 'active' | 'paused' | 'cancelled' | 'expired' | 'pending'
+           last_renewal_date?: string
+           next_due_date?: string
+           payment_method?: string
+           responsible_id?: string | null
+           notes?: string | null
+           alerts?: boolean
+           management_url?: string | null
+           access_credentials?: string | null
+           cost?: number
+           project_id?: string | null
+           created_at?: string
+           updated_at?: string
+         }
+       }
+       subscription_payments: {
+         Row: {
+           id: string
+           subscription_id: string
+           payment_date: string
+           amount: number
+           currency: string
+           payment_method: string
+           transaction_id: string | null
+           notes: string | null
+           created_at: string
+         }
+         Insert: {
+           id?: string
+           subscription_id: string
+           payment_date: string
+           amount: number
+           currency?: string
+           payment_method: string
+           transaction_id?: string | null
+           notes?: string | null
+           created_at?: string
+         }
+         Update: {
+           id?: string
+           subscription_id?: string
+           payment_date?: string
+           amount?: number
+           currency?: string
+           payment_method?: string
+           transaction_id?: string | null
+           notes?: string | null
+           created_at?: string
+         }
+       }
     }
   }
 }

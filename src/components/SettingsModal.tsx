@@ -1,6 +1,7 @@
-import React from 'react';
-import { X, LogOut, User, Shield, Bell, Palette } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, LogOut, User, Shield, Bell, Palette, Key, Lock } from 'lucide-react';
 import { User as SupabaseUser } from '@supabase/supabase-js';
+import { usePinSecurity } from '../hooks/usePinSecurity';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -15,7 +16,34 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   user,
   onLogout
 }) => {
+  const { isPinSet, setPin, clearPin } = usePinSecurity();
+  const [showPinSection, setShowPinSection] = useState(false);
+  const [newPin, setNewPin] = useState('');
+  const [confirmPin, setConfirmPin] = useState('');
+  const [pinError, setPinError] = useState('');
+
   if (!isOpen) return null;
+
+  const handleSetPin = () => {
+    if (newPin.length < 4) {
+      setPinError('El PIN debe tener al menos 4 dígitos');
+      return;
+    }
+    if (newPin !== confirmPin) {
+      setPinError('Los PINs no coinciden');
+      return;
+    }
+    
+    setPin(newPin);
+    setNewPin('');
+    setConfirmPin('');
+    setPinError('');
+    setShowPinSection(false);
+  };
+
+  const handleClearPin = () => {
+    clearPin();
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -60,6 +88,100 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
               <Shield className="w-4 h-4" />
               <span className="text-sm">Privacidad</span>
             </button>
+
+            {/* PIN de Seguridad */}
+            <div className="border-t pt-2">
+              <div className="flex items-center justify-between px-4 py-3">
+                <div className="flex items-center space-x-3">
+                  {isPinSet ? <Lock className="w-4 h-4 text-green-600" /> : <Key className="w-4 h-4 text-gray-500" />}
+                  <div>
+                    <span className="text-sm font-medium text-gray-700">PIN de Seguridad</span>
+                    <p className="text-xs text-gray-500">
+                      {isPinSet ? 'PIN configurado' : 'Sin PIN configurado'}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex space-x-2">
+                  {!isPinSet ? (
+                    <button
+                      onClick={() => setShowPinSection(true)}
+                      className="text-xs bg-blue-600 text-white px-3 py-1 rounded-md hover:bg-blue-700 transition-colors"
+                    >
+                      Configurar
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => setShowPinSection(true)}
+                        className="text-xs bg-gray-600 text-white px-3 py-1 rounded-md hover:bg-gray-700 transition-colors"
+                      >
+                        Cambiar
+                      </button>
+                      <button
+                        onClick={handleClearPin}
+                        className="text-xs bg-red-600 text-white px-3 py-1 rounded-md hover:bg-red-700 transition-colors"
+                      >
+                        Eliminar
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Sección para configurar PIN */}
+              {showPinSection && (
+                <div className="px-4 py-3 bg-gray-50 rounded-lg space-y-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Nuevo PIN (mínimo 4 dígitos)
+                    </label>
+                    <input
+                      type="password"
+                      value={newPin}
+                      onChange={(e) => setNewPin(e.target.value)}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="1234"
+                      maxLength={8}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Confirmar PIN
+                    </label>
+                    <input
+                      type="password"
+                      value={confirmPin}
+                      onChange={(e) => setConfirmPin(e.target.value)}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="1234"
+                      maxLength={8}
+                    />
+                  </div>
+                  {pinError && (
+                    <p className="text-xs text-red-600">{pinError}</p>
+                  )}
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={handleSetPin}
+                      className="text-xs bg-blue-600 text-white px-3 py-1 rounded-md hover:bg-blue-700 transition-colors"
+                    >
+                      Guardar PIN
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowPinSection(false);
+                        setNewPin('');
+                        setConfirmPin('');
+                        setPinError('');
+                      }}
+                      className="text-xs bg-gray-600 text-white px-3 py-1 rounded-md hover:bg-gray-700 transition-colors"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Logout Button */}

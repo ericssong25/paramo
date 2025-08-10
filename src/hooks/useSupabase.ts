@@ -854,3 +854,6 @@ export const usePreferences = () => {
 
   return { preferencesByUser, fetchPreferencesForUser, upsertPreferences }
 }
+
+// Exportar el hook de suscripciones
+export { useSubscriptions } from './useSubscriptions'

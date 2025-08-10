@@ -7,23 +7,22 @@ import TaskModal from './components/TaskModal';
 import TaskView from './components/TaskView';
 import ProjectHub from './components/ProjectHub';
 import Team from './components/Team';
-import CampaignDashboard from './components/CampaignDashboard';
+import SubscriptionDashboard from './components/SubscriptionDashboard';
 import ApprovalCenter from './components/ApprovalCenter';
 import LoginModal from './components/LoginModal';
 import SettingsModal from './components/SettingsModal';
 import NotificationsModal from './components/NotificationsModal';
 import Snackbar from './components/Snackbar';
-import { useProjects, useTasks, useContentItems, useProfiles, usePreferences } from './hooks/useSupabase';
+import { useProjects, useTasks, useContentItems, useProfiles, usePreferences, useSubscriptions } from './hooks/useSupabase';
 import { useAuth } from './hooks/useAuth';
 import { convertSupabaseProjectToProject, convertSupabaseTaskToTask, convertSupabaseContentItemToContentItem } from './utils/typeConverters';
-import { Project, Task, ContentItem, User, TaskStatus, Campaign, Client, Approval, TaskFilter } from './types';
+import { Project, Task, ContentItem, User, TaskStatus, Client, Approval, TaskFilter, Subscription } from './types';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import ContentCalendar from './components/ContentCalendar';
 import TaskList from './components/TaskList';
 import SupabaseErrorComponent from './components/SupabaseError';
 import { 
   mockUsers, 
-  mockCampaigns, 
   mockClients, 
   mockApprovals 
 } from './data/mockData';
@@ -35,6 +34,7 @@ function App() {
   const { contentItems: supabaseContentItems, loading: contentLoading, error: contentError } = useContentItems();
   const { profiles: supabaseProfiles, loading: profilesLoading, error: profilesError } = useProfiles();
   const { fetchPreferencesForUser, upsertPreferences } = usePreferences();
+  const { subscriptions, loading: subscriptionsLoading, error: subscriptionsError, createSubscription, updateSubscription, deleteSubscription } = useSubscriptions();
 
   // Hook de autenticación
   const { user, loading: authLoading, signOut, isAuthenticated } = useAuth();
@@ -55,7 +55,7 @@ function App() {
   const [subtaskOrderByTaskId, setSubtaskOrderByTaskId] = useState<Record<string, string[]>>({});
   
   const [users] = useLocalStorage<User[]>('pm_users', mockUsers);
-  const [campaigns] = useLocalStorage<Campaign[]>('pm_campaigns', mockCampaigns);
+
   const [clients] = useLocalStorage<Client[]>('pm_clients', mockClients);
   const [approvals, setApprovals] = useLocalStorage<Approval[]>('pm_approvals', mockApprovals);
   
@@ -640,11 +640,59 @@ function App() {
     ));
   };
 
+  // Funciones para manejar suscripciones
+  const handleAddSubscription = async (subscriptionData: Omit<Subscription, 'id' | 'createdAt' | 'updatedAt'>) => {
+    try {
+      await createSubscription(subscriptionData);
+      showSnackbar('Suscripción creada exitosamente', 'success');
+    } catch (error) {
+      console.error('Error adding subscription:', error);
+      showSnackbar('Error al crear suscripción', 'error');
+    }
+  };
+
+  const handleEditSubscription = async (id: string, updates: Partial<Subscription>) => {
+    try {
+      await updateSubscription(id, updates);
+      showSnackbar('Suscripción actualizada exitosamente', 'success');
+    } catch (error) {
+      console.error('Error updating subscription:', error);
+      showSnackbar('Error al actualizar suscripción', 'error');
+    }
+  };
+
+  const handleDeleteSubscription = async (subscriptionId: string) => {
+    try {
+      await deleteSubscription(subscriptionId);
+      showSnackbar('Suscripción eliminada exitosamente', 'success');
+    } catch (error) {
+      console.error('Error deleting subscription:', error);
+      showSnackbar('Error al eliminar suscripción', 'error');
+    }
+  };
+
+  const handleViewSubscription = (subscription: Subscription) => {
+    // TODO: Implementar vista detallada de suscripción
+    console.log('View subscription:', subscription);
+  };
+
+  const handleUpdateCredentials = async (subscriptionId: string, credentials: { username: string; password?: string }) => {
+    try {
+      await updateSubscription(subscriptionId, {
+        accessCredentials: credentials
+      });
+      showSnackbar('Credenciales actualizadas correctamente', 'success');
+    } catch (error) {
+      console.error('Error updating credentials:', error);
+      showSnackbar('Error al actualizar credenciales', 'error');
+    }
+  };
+
   // Loading states
-  const isLoading = projectsLoading || tasksLoading || contentLoading || profilesLoading || authLoading;
+  const isLoading = projectsLoading || tasksLoading || contentLoading || profilesLoading || subscriptionsLoading || authLoading;
 
   // Error states
-  const hasError = projectsError || tasksError || contentError || profilesError;
+  const hasError = projectsError || tasksError || contentError || profilesError || subscriptionsError;
 
   // Si está cargando la autenticación, mostrar loading
   if (authLoading) {
@@ -733,11 +781,28 @@ function App() {
             onViewTask={handleViewTask}
           />
         );
-      case 'campaigns':
+      case 'subscriptions':
         return (
-          <CampaignDashboard
-            campaigns={campaigns}
-            contentItems={contentItems}
+          <SubscriptionDashboard
+            subscriptions={subscriptions}
+            loading={subscriptionsLoading}
+            profiles={supabaseProfiles.map(profile => ({
+              id: profile.id,
+              name: profile.name,
+              email: profile.user_id, // Usar user_id como email temporal
+              avatar: profile.avatar || undefined,
+              role: profile.role
+            }))}
+            projects={supabaseProjects.map(project => ({
+              id: project.id,
+              name: project.name,
+              description: project.description || undefined
+            }))}
+            onAddSubscription={handleAddSubscription}
+            onEditSubscription={handleEditSubscription}
+            onDeleteSubscription={handleDeleteSubscription}
+            onViewSubscription={handleViewSubscription}
+            onUpdateCredentials={handleUpdateCredentials}
           />
         );
       case 'approvals':
@@ -823,6 +888,13 @@ function App() {
             {contentError && (
               <SupabaseErrorComponent 
                 error={contentError} 
+                onClose={() => {}} 
+                className="mb-2"
+              />
+            )}
+            {subscriptionsError && (
+              <SupabaseErrorComponent 
+                error={subscriptionsError} 
                 onClose={() => {}} 
                 className="mb-2"
               />

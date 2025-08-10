@@ -76,7 +76,7 @@ export interface Subtask {
   position?: number;
 }
 
-export type ContentType = 'post' | 'story' | 'video' | 'article' | 'campaign';
+export type ContentType = 'post' | 'story' | 'video' | 'article';
 export type ContentPlatform = 'instagram' | 'facebook' | 'twitter' | 'linkedin' | 'tiktok' | 'youtube' | 'blog';
 export type ContentStatus = 'draft' | 'review' | 'approved' | 'scheduled' | 'published';
 
@@ -105,29 +105,45 @@ export interface ContentItem {
   projectId: string;
 }
 
-export interface Campaign {
+
+
+export type SubscriptionType = 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'semiannual' | 'annual';
+export type SubscriptionStatus = 'active' | 'paused' | 'cancelled' | 'expired' | 'pending';
+
+export interface Subscription {
   id: string;
-  name: string;
-  description: string;
-  type: 'awareness' | 'engagement' | 'conversion' | 'retention';
-  status: 'planning' | 'active' | 'paused' | 'completed';
-  startDate: Date;
-  endDate: Date;
-  budget?: number;
-  platforms: string[];
-  targetAudience: string;
-  kpis: string[];
-  contentItems: string[]; // Content item IDs
-  metrics?: {
-    reach: number;
-    impressions: number;
-    engagement: number;
-    conversions: number;
-    roi: number;
+  serviceName: string;
+  subscriptionType: SubscriptionType;
+  currency: string;
+  status: SubscriptionStatus;
+  lastRenewalDate: Date;
+  nextDueDate: Date;
+  paymentMethod: string;
+  responsible: User;
+  notes?: string;
+  alerts: boolean;
+  managementUrl?: string;
+  accessCredentials?: {
+    username: string;
+    password?: string;
   };
+  cost: number;
   createdAt: Date;
   updatedAt: Date;
-  projectId: string;
+  projectId?: string;
+}
+
+export interface SubscriptionPayment {
+  id: string;
+  subscriptionId: string;
+  amount: number;
+  currency: string;
+  paymentDate: Date;
+  paymentMethod: string;
+  status: 'completed' | 'pending' | 'failed';
+  transactionId?: string;
+  notes?: string;
+  createdAt: Date;
 }
 
 export interface Client {
@@ -145,7 +161,7 @@ export interface Client {
 export interface Approval {
   id: string;
   itemId: string; // Content or task ID
-  itemType: 'content' | 'task' | 'campaign';
+  itemType: 'content' | 'task';
   status: 'pending' | 'approved' | 'rejected' | 'changes-requested';
   approver: User | Client;
   feedback?: string;
@@ -167,7 +183,7 @@ export interface TaskFilter {
   sortDir?: 'asc' | 'desc';
   contentType?: string[];
   platform?: string[];
-  campaign?: string[];
+
 }
 
 export interface TaskComment {
@@ -235,7 +251,7 @@ export interface SupabaseContentItem {
   id: string;
   title: string;
   description: string | null;
-  type: 'post' | 'story' | 'video' | 'article' | 'campaign';
+  type: 'post' | 'story' | 'video' | 'article';
   platform: 'instagram' | 'facebook' | 'twitter' | 'linkedin' | 'tiktok' | 'youtube' | 'blog';
   status: 'draft' | 'review' | 'approved' | 'scheduled' | 'published';
   scheduled_date: string | null;
@@ -249,6 +265,39 @@ export interface SupabaseContentItem {
   engagement_metrics: any | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface SupabaseSubscription {
+  id: string;
+  service_name: string;
+  subscription_type: 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'semiannual' | 'annual';
+  currency: string;
+  status: 'active' | 'paused' | 'cancelled' | 'expired' | 'pending';
+  last_renewal_date: string;
+  next_due_date: string;
+  payment_method: string;
+  responsible_id: string | null;
+  notes: string | null;
+  alerts: boolean;
+  management_url: string | null;
+  access_credentials: any | null; // JSON: {username: string, password?: string}
+  cost: number;
+  project_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SupabaseSubscriptionPayment {
+  id: string;
+  subscription_id: string;
+  amount: number;
+  currency: string;
+  payment_date: string;
+  payment_method: string;
+  status: 'completed' | 'pending' | 'failed';
+  transaction_id: string | null;
+  notes: string | null;
+  created_at: string;
 }
 
 export interface SupabaseTaskComment {
