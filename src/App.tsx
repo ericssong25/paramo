@@ -4,6 +4,7 @@ import Header from './components/Header';
 import TaskBoard from './components/TaskBoard';
 import ProjectModal from './components/ProjectModal';
 import TaskModal from './components/TaskModal';
+import ProjectSelectionModal from './components/ProjectSelectionModal';
 import TaskView from './components/TaskView';
 import ProjectHub from './components/ProjectHub';
 import Team from './components/Team';
@@ -62,6 +63,7 @@ function App() {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<string>('tasks');
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+  const [isProjectSelectionModalOpen, setIsProjectSelectionModalOpen] = useState(false);
   const [isTaskViewOpen, setIsTaskViewOpen] = useState(false);
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | undefined>(undefined);
@@ -226,8 +228,24 @@ function App() {
 
   // Task management functions
   const handleCreateTask = () => {
+    // Si estamos en "All Tasks", mostrar modal de selección de proyecto
+    if (!selectedProjectId) {
+      setIsProjectSelectionModalOpen(true);
+    } else {
+      // Si ya hay un proyecto seleccionado, ir directo a crear tarea
+      setSelectedTask(undefined);
+      setIsTaskModalOpen(true);
+    }
+  };
+
+  const handleProjectSelected = (projectId: string | null) => {
+    setIsProjectSelectionModalOpen(false);
     setSelectedTask(undefined);
     setIsTaskModalOpen(true);
+    // Guardar el proyecto seleccionado temporalmente para la tarea
+    if (projectId) {
+      setSelectedProjectId(projectId);
+    }
   };
 
   const handleViewTask = (task: Task) => {
@@ -914,6 +932,14 @@ function App() {
           {renderMainContent()}
         </div>
       </div>
+
+      {/* Project Selection Modal */}
+      <ProjectSelectionModal
+        isOpen={isProjectSelectionModalOpen}
+        onClose={() => setIsProjectSelectionModalOpen(false)}
+        onSelectProject={handleProjectSelected}
+        projects={projects}
+      />
 
       {/* Task Modal */}
       <TaskModal

@@ -44,6 +44,7 @@ const TaskModal: React.FC<TaskModalProps> = ({
 
   const [newTag, setNewTag] = useState('');
 
+  // Reset form when modal opens/closes or task changes
   useEffect(() => {
     if (task) {
       setFormData({
@@ -56,6 +57,7 @@ const TaskModal: React.FC<TaskModalProps> = ({
         tags: [...task.tags],
       });
     } else {
+      // Reset form data when creating new task
       setFormData({
         title: '',
         description: '',
@@ -66,25 +68,40 @@ const TaskModal: React.FC<TaskModalProps> = ({
         tags: [],
       });
     }
-  }, [task]);
+    // Reset newTag when modal opens/closes
+    setNewTag('');
+  }, [task, isOpen]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    const assignee = formData.assigneeId ? users.find(u => u.id === formData.assigneeId) : undefined;
     
     const taskData: Partial<Task> = {
       title: formData.title,
       description: formData.description,
       priority: formData.priority,
       status: formData.status,
-      assignee,
+      assignee: formData.assigneeId ? users.find(u => u.id === formData.assigneeId) : undefined,
       dueDate: formData.dueDate ? new Date(formData.dueDate) : undefined,
       tags: formData.tags,
       projectId,
     };
 
     onSave(taskData);
+    onClose();
+  };
+
+  const handleClose = () => {
+    // Reset form data when closing modal
+    setFormData({
+      title: '',
+      description: '',
+      priority: 'normal',
+      status: 'todo',
+      assigneeId: '',
+      dueDate: '',
+      tags: [],
+    });
+    setNewTag('');
     onClose();
   };
 
@@ -112,6 +129,7 @@ const TaskModal: React.FC<TaskModalProps> = ({
     const [open, setOpen] = useState(false)
     const [q, setQ] = useState('')
     const anchorRef = React.useRef<HTMLButtonElement | null>(null)
+    const dropdownRef = React.useRef<HTMLDivElement | null>(null)
     const [menuStyle, setMenuStyle] = useState<{left:number; top:number; width:number}>({left:0, top:0, width:0})
 
     const selected = users.find(u => u.id === value)
@@ -128,11 +146,12 @@ const TaskModal: React.FC<TaskModalProps> = ({
       if (!open) return
       updatePosition()
       const onDoc = (e: MouseEvent) => {
-        const el = anchorRef.current
-        if (!el) return
-        if (!el.contains(e.target as Node)) {
-          setOpen(false)
-        }
+        const anchor = anchorRef.current
+        const dropdown = dropdownRef.current
+        const target = e.target as Node
+        if (anchor && anchor.contains(target)) return
+        if (dropdown && dropdown.contains(target)) return
+        setOpen(false)
       }
       const onResize = () => updatePosition()
       document.addEventListener('mousedown', onDoc)
@@ -147,6 +166,7 @@ const TaskModal: React.FC<TaskModalProps> = ({
 
     const dropdown = (
       <div
+        ref={dropdownRef}
         className="z-[70] rounded-lg border border-gray-200 bg-white shadow-lg overflow-hidden"
         style={{ position: 'fixed', left: menuStyle.left, top: menuStyle.top, width: menuStyle.width }}
       >
@@ -175,7 +195,7 @@ const TaskModal: React.FC<TaskModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose} />
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={handleClose} />
         
         <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full">
           <form onSubmit={handleSubmit}>
@@ -190,7 +210,7 @@ const TaskModal: React.FC<TaskModalProps> = ({
                     type="button"
                     onClick={() => {
                       onDelete(task.id);
-                      onClose();
+                      handleClose();
                     }}
                     className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                   >
@@ -199,7 +219,7 @@ const TaskModal: React.FC<TaskModalProps> = ({
                 )}
                 <button
                   type="button"
-                  onClick={onClose}
+                  onClick={handleClose}
                   className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
                 >
                   <X className="w-4 h-4" />
@@ -341,7 +361,7 @@ const TaskModal: React.FC<TaskModalProps> = ({
             <div className="flex items-center justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50">
               <button
                 type="button"
-                onClick={onClose}
+                onClick={handleClose}
                 className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
               >
                 Cancel

@@ -18,6 +18,7 @@ import {
   GripVertical,
   CheckCircle
 } from 'lucide-react';
+import DeleteConfirmationModal from './DeleteConfirmationModal';
 import { Task, TaskPriority, TaskStatus, User as UserType, Subtask } from '../types';
 import {
   DndContext,
@@ -148,6 +149,7 @@ const TaskView: React.FC<TaskViewProps> = ({
   const [assigneeOpen, setAssigneeOpen] = useState(false);
   const assigneeRef = React.useRef<HTMLDivElement | null>(null);
   const [assigneeSearch, setAssigneeSearch] = useState('');
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
 
   React.useEffect(() => {
     if (!assigneeOpen) return;
@@ -192,6 +194,17 @@ const TaskView: React.FC<TaskViewProps> = ({
       const newIds = arrayMove(ids, oldIndex, newIndex);
       setLocalSubtaskIds(newIds); // actualización instantánea
       onReorderSubtasks(task.id, newIds); // persistimos sin bloquear UI
+    }
+  };
+
+  const handleDeleteClick = () => {
+    setShowDeleteConfirmation(true);
+  };
+
+  const handleDeleteConfirm = () => {
+    if (onDelete) {
+      onDelete(task.id);
+      onClose(); // Cerrar el modal de vista de tarea
     }
   };
 
@@ -264,7 +277,7 @@ const TaskView: React.FC<TaskViewProps> = ({
             </button>
             {onDelete && (
               <button
-                onClick={() => onDelete(task.id)}
+                onClick={handleDeleteClick}
                 className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
               >
                 <Trash2 className="w-5 h-5" />
@@ -523,6 +536,16 @@ const TaskView: React.FC<TaskViewProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={showDeleteConfirmation}
+        onClose={() => setShowDeleteConfirmation(false)}
+        onConfirm={handleDeleteConfirm}
+        title="Eliminar Tarea"
+        message="¿Estás seguro de que quieres eliminar esta tarea? Esta acción eliminará permanentemente la tarea y todas sus subtareas."
+        itemName={task.title}
+      />
     </div>
   );
 };
