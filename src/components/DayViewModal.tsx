@@ -9,7 +9,7 @@ interface DayViewModalProps {
   tasks: Task[];
   contentItems: ContentItem[];
   onViewTask: (task: Task) => void;
-  onEditContent: (content: ContentItem) => void;
+  onViewContent: (content: ContentItem) => void;
   onConvertTaskToContent: (task: Task) => void;
 }
 
@@ -20,7 +20,7 @@ const DayViewModal: React.FC<DayViewModalProps> = ({
   tasks,
   contentItems,
   onViewTask,
-  onEditContent,
+  onViewContent,
   onConvertTaskToContent,
 }) => {
   if (!isOpen) return null;
@@ -113,13 +113,13 @@ const DayViewModal: React.FC<DayViewModalProps> = ({
               <div>
                 <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
                   <div className="w-2 h-2 bg-purple-500 rounded-full mr-3" />
-                  Content Items ({contentItems.length})
+                  Content ({contentItems.length})
                 </h3>
                 <div className="space-y-3">
                   {contentItems.map((content) => (
                     <div
                       key={content.id}
-                      onClick={() => onEditContent(content)}
+                      onClick={() => onViewContent(content)}
                       className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
                     >
                       <div className="flex items-start justify-between">

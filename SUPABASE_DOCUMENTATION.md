@@ -177,21 +177,24 @@ project_milestones (
 
 ---
 
-#### **5. `tasks` - Tareas**
-Tareas asignables a usuarios con diferentes estados.
+#### **5. `tasks` - Tareas (Actualizada)**
+Tareas asignables a usuarios con diferentes estados y funcionalidad de archivo.
 
 ```sql
 tasks (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   title TEXT NOT NULL,
   description TEXT,
-  status TEXT NOT NULL DEFAULT 'todo' CHECK (status IN ('todo', 'in-progress', 'review', 'done')),
+  status task_status NOT NULL DEFAULT 'todo' CHECK (status IN ('todo', 'in-progress', 'corrections', 'review', 'done', 'archived')),
   priority TEXT NOT NULL DEFAULT 'normal' CHECK (priority IN ('low', 'normal', 'high', 'urgent')),
   assignee_id UUID REFERENCES profiles(id),
   due_date DATE,
   project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
   time_tracked INTEGER DEFAULT 0,
   tags JSONB,
+  completed_files JSONB DEFAULT '[]',
+  review_date TIMESTAMP WITH TIME ZONE,
+  review_notes TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 )
@@ -201,15 +204,30 @@ tasks (
 - `id`: Identificador único de la tarea
 - `title`: Título de la tarea
 - `description`: Descripción de la tarea
-- `status`: Estado de la tarea (todo, in-progress, review, done)
+- `status`: Estado de la tarea (todo, in-progress, corrections, review, done, archived)
 - `priority`: Prioridad (low, normal, high, urgent)
 - `assignee_id`: Referencia al usuario asignado
 - `due_date`: Fecha de vencimiento
 - `project_id`: Referencia al proyecto
 - `time_tracked`: Tiempo registrado en minutos
 - `tags`: Array JSON de etiquetas
+- `completed_files`: Array JSON de archivos completados (para conversión a contenido)
+- `review_date`: Fecha de revisión
+- `review_notes`: Notas de revisión
 - `created_at`: Fecha de creación
 - `updated_at`: Fecha de última actualización
+
+**Tipo ENUM task_status:**
+```sql
+CREATE TYPE task_status AS ENUM (
+  'todo',
+  'in-progress', 
+  'corrections',
+  'review',
+  'done',
+  'archived'
+);
+```
 
 ---
 
@@ -235,49 +253,66 @@ task_subtasks (
 
 ---
 
-#### **7. `content_items` - Contenido**
-Contenido de marketing y redes sociales.
+#### **7. `content_items` - Contenido (Nueva Estructura)**
+Contenido de marketing y redes sociales creado desde tareas completadas.
 
 ```sql
 content_items (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   title TEXT NOT NULL,
   description TEXT,
-  type TEXT NOT NULL CHECK (type IN ('post', 'story', 'video', 'article')),
-  platform TEXT NOT NULL CHECK (platform IN ('instagram', 'facebook', 'twitter', 'linkedin', 'tiktok', 'youtube', 'blog')),
-  status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'review', 'approved', 'scheduled', 'published')),
-  scheduled_date TIMESTAMP WITH TIME ZONE,
-  published_date TIMESTAMP WITH TIME ZONE,
-  assignee_id UUID REFERENCES profiles(id),
+  publish_date DATE,
+  content_type content_type NOT NULL,
+  platforms platform_type[] NOT NULL DEFAULT '{}',
+  categories TEXT[] NOT NULL DEFAULT '{}',
+  copy_text TEXT,
+  media_files JSONB DEFAULT '[]',
   project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
-  content TEXT,
-  media_urls JSONB,
-  hashtags JSONB,
-  mentions JSONB,
-  engagement_metrics JSONB,
+  created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  status TEXT DEFAULT 'draft' CHECK (status IN ('draft', 'scheduled', 'published', 'archived'))
 )
 ```
 
 **Campos:**
 - `id`: Identificador único del contenido
-- `title`: Título del contenido
+- `title`: Título del contenido (tomado de la tarea)
 - `description`: Descripción del contenido
-- `type`: Tipo de contenido (post, story, video, article)
-- `platform`: Plataforma (instagram, facebook, twitter, linkedin, tiktok, youtube, blog)
-- `status`: Estado del contenido (draft, review, approved, scheduled, published)
-- `scheduled_date`: Fecha programada de publicación
-- `published_date`: Fecha de publicación real
-- `assignee_id`: Referencia al usuario asignado
-- `project_id`: Referencia al proyecto
-- `content`: Contenido del post
-- `media_urls`: Array JSON de URLs de medios
-- `hashtags`: Array JSON de hashtags
-- `mentions`: Array JSON de menciones
-- `engagement_metrics`: Objeto JSON con métricas (likes, comments, shares, views)
+- `publish_date`: Fecha programada para publicación
+- `content_type`: Tipo de contenido (reel, carousel, story, static, video, image)
+- `platforms`: Array de plataformas donde se publicará (instagram, facebook, youtube, tiktok, twitter, linkedin)
+- `categories`: Array de categorías del contenido (puede ser múltiple: humor, educativo, ventas, etc.)
+- `copy_text`: Texto de la publicación con hashtags
+- `media_files`: Array JSON de archivos multimedia (tomados de la tarea)
+- `project_id`: Referencia al proyecto asociado
+- `created_by`: Referencia al usuario que creó el contenido
 - `created_at`: Fecha de creación
 - `updated_at`: Fecha de última actualización
+- `status`: Estado del contenido (draft, scheduled, published, archived)
+
+**Tipos ENUM:**
+```sql
+-- Tipo de contenido
+CREATE TYPE content_type AS ENUM (
+  'reel',
+  'carousel', 
+  'story',
+  'static',
+  'video',
+  'image'
+);
+
+-- Plataformas de publicación
+CREATE TYPE platform_type AS ENUM (
+  'instagram',
+  'facebook',
+  'youtube',
+  'tiktok',
+  'twitter',
+  'linkedin'
+);
+```
 
 ---
 
@@ -403,9 +438,12 @@ subscription_payments (
 
 ### **Contenido:**
 - `idx_content_items_project_id`: Filtrado por proyecto
-- `idx_content_items_assignee_id`: Filtrado por usuario asignado
+- `idx_content_items_publish_date`: Filtrado por fecha de publicación
+- `idx_content_items_content_type`: Filtrado por tipo de contenido
+- `idx_content_items_platforms`: Filtrado por plataformas (GIN)
+- `idx_content_items_categories`: Filtrado por categorías (GIN)
 - `idx_content_items_status`: Filtrado por estado
-- `idx_content_items_scheduled_date`: Filtrado por fecha programada
+- `idx_content_items_created_by`: Filtrado por usuario creador
 
 ### **Suscripciones:**
 - `idx_subscriptions_status`: Filtrado por estado
@@ -519,10 +557,13 @@ const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 ### **Hooks Disponibles:**
 - `useProjects()`: CRUD completo de proyectos
 - `useTasks()`: CRUD + filtros por proyecto/usuario
-- `useContentItems()`: CRUD de contenido
+- `useContentItems()`: CRUD de contenido (estructura antigua)
+- `useContent()`: CRUD de contenido (nueva estructura) + conversión de tareas
 - `useProfiles()`: Gestión de usuarios
-- `useSubscriptions()`: CRUD de suscripciones (pendiente de implementar)
-- `useSubscriptionPayments()`: CRUD de pagos de suscripciones (pendiente de implementar)
+- `useSubscriptions()`: CRUD de suscripciones
+- `useSubscriptionPayments()`: CRUD de pagos de suscripciones
+- `useStorage()`: Gestión de archivos en Supabase Storage
+- `useComments()`: Gestión de comentarios de tareas
 
 ---
 
@@ -543,8 +584,10 @@ const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 ### **Estados de Tareas:**
 - `todo`: Por hacer
 - `in-progress`: En progreso
+- `corrections`: En correcciones (tarea devuelta desde review)
 - `review`: En revisión
 - `done`: Completada
+- `archived`: Archivada (sin convertir a contenido)
 
 ### **Tipos de Proyectos:**
 - `finite`: Proyecto con fecha de fin
@@ -579,6 +622,216 @@ Supabase realiza backups automáticos diarios.
 ### **Escalabilidad:**
 - La estructura está optimizada para hasta 10,000 registros
 - Para mayor escala, considerar particionamiento de tablas
+
+---
+
+## 🎯 Funcionalidad de Conversión de Tareas a Contenido
+
+### **Descripción General**
+Sistema que permite convertir tareas completadas en elementos de contenido para marketing y redes sociales, con eliminación automática de la tarea original.
+
+### **Flujo de Trabajo**
+
+#### **1. Conversión de Tarea a Contenido**
+```
+Tarea "Done" → Botón "Convertir a Contenido" → Modal de Configuración → Crear Content Item → Eliminar Tarea
+```
+
+#### **2. Archivo de Tarea**
+```
+Tarea "Done" → Botón "Archivar" → Cambiar estado a "archived"
+```
+
+### **Componentes Implementados**
+
+#### **Modales:**
+- **`ConvertToContentModal`**: Modal para configurar contenido desde tarea
+- **`ContentViewModal`**: Modal para visualizar contenido creado
+- **`TaskReviewModal`**: Modal para subir archivos al marcar para revisión
+- **`TaskReturnModal`**: Modal para comentarios al devolver tarea
+
+#### **Hooks:**
+- **`useContent()`**: Gestión completa de contenido + conversión de tareas
+- **`useStorage()`**: Gestión de archivos en Supabase Storage
+- **`useComments()`**: Gestión de comentarios de tareas
+
+#### **Funcionalidades:**
+- ✅ **Mapeo automático**: Título, descripción, archivos, project_id
+- ✅ **Configuración manual**: Tipo, plataformas, categorías, copy, fecha
+- ✅ **Eliminación de archivos**: Al devolver tarea de "review" a "corrections"
+- ✅ **Descarga de archivos**: Desde preview de contenido
+- ✅ **Comentarios**: Sistema de comentarios en tareas
+- ✅ **Drag & Drop**: Condicional con validación de estados
+
+### **Estados de Tareas y Transiciones**
+
+#### **Flujo Normal:**
+```
+todo → in-progress → review → done
+```
+
+#### **Flujo con Correcciones:**
+```
+todo → in-progress → review → corrections → in-progress → review → done
+```
+
+#### **Flujo de Archivo:**
+```
+done → archived (sin conversión)
+```
+
+#### **Flujo de Conversión:**
+```
+done → [conversión] → content_item (tarea eliminada)
+```
+
+### **Campos Mapeados Automáticamente**
+
+| Campo Tarea | Campo Contenido | Descripción |
+|-------------|-----------------|-------------|
+| `title` | `title` | Título de la tarea |
+| `description` | `description` | Descripción de la tarea |
+| `completed_files` | `media_files` | Archivos subidos en review |
+| `project_id` | `project_id` | Proyecto asociado |
+| `assignee_id` | `created_by` | Usuario que creó el contenido |
+
+### **Campos Configurables**
+
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `content_type` | ENUM | reel, carousel, story, static, video, image |
+| `platforms` | ARRAY | instagram, facebook, youtube, tiktok, twitter, linkedin |
+| `categories` | ARRAY | humor, educativo, ventas, etc. |
+| `copy_text` | TEXT | Texto de publicación con hashtags |
+| `publish_date` | DATE | Fecha programada de publicación |
+
+### **Gestión de Archivos**
+
+#### **Subida de Archivos:**
+- **Local**: Archivos se almacenan temporalmente en el navegador
+- **Review**: Archivos se suben a Supabase Storage al marcar para revisión
+- **Límite**: 50MB por archivo (límite del plan gratuito)
+
+#### **Eliminación de Archivos:**
+- **Trigger**: Tarea pasa de "review" a "corrections"
+- **Acción**: Elimina archivos de Supabase Storage
+- **Limpieza**: Limpia `completed_files` y `review_notes` en la base de datos
+
+#### **Descarga de Archivos:**
+- **Individual**: Desde `TaskView` modal
+- **Múltiple**: Botón "Descargar todo" si hay más de un archivo
+- **Contenido**: Desde `ContentViewModal`
+
+### **Sistema de Comentarios**
+
+#### **Tabla `task_comments`:**
+```sql
+task_comments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  task_id UUID REFERENCES tasks(id) ON DELETE CASCADE,
+  author_id UUID REFERENCES profiles(id),
+  content TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+)
+```
+
+#### **Funcionalidades:**
+- ✅ **Crear comentarios**: En cualquier tarea
+- ✅ **Editar comentarios**: Solo el autor
+- ✅ **Eliminar comentarios**: Solo el autor
+- ✅ **Realtime**: Actualización en tiempo real
+- ✅ **Comentarios automáticos**: Al devolver tarea para correcciones
+
+### **Validaciones y Restricciones**
+
+#### **Drag & Drop:**
+- ✅ **Transiciones válidas**: Solo estados secuenciales permitidos
+- ✅ **Feedback visual**: Indicadores de validación
+- ✅ **Condicional**: Diferentes acciones según estado origen/destino
+
+#### **Conversión:**
+- ✅ **Solo tareas "done"**: No se puede convertir tareas en otros estados
+- ✅ **Archivos requeridos**: Tarea debe tener archivos para conversión
+- ✅ **Validación de campos**: Plataformas y categorías obligatorias
+
+#### **Archivo:**
+- ✅ **Solo tareas "done"**: No se puede archivar tareas en otros estados
+- ✅ **Sin conversión**: Tarea se mantiene pero cambia estado a "archived"
+
+### **Integración con Calendario**
+
+#### **ContentCalendar:**
+- ✅ **Filtros**: All, Content, Tasks
+- ✅ **Vista de contenido**: Elementos de contenido en calendario
+- ✅ **Filtrado por proyecto**: Contenido específico del proyecto
+- ✅ **Vista detallada**: Modal con información completa
+
+#### **ProjectHub:**
+- ✅ **Contenido del proyecto**: Vista de contenido específico
+- ✅ **Filtros integrados**: Mismos filtros que calendario principal
+- ✅ **Navegación**: Entre tareas y contenido del proyecto
+
+### **Scripts SQL Requeridos**
+
+#### **1. Tabla de Comentarios:**
+```sql
+-- Ejecutar en Supabase SQL Editor
+CREATE TABLE task_comments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  task_id UUID REFERENCES tasks(id) ON DELETE CASCADE,
+  author_id UUID REFERENCES profiles(id),
+  content TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Índices
+CREATE INDEX idx_task_comments_task_id ON task_comments(task_id);
+CREATE INDEX idx_task_comments_author_id ON task_comments(author_id);
+
+-- RLS
+ALTER TABLE task_comments ENABLE ROW LEVEL SECURITY;
+
+-- Políticas
+CREATE POLICY "Users can view task comments" ON task_comments
+  FOR SELECT USING (auth.role() = 'authenticated');
+
+CREATE POLICY "Users can create task comments" ON task_comments
+  FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+
+CREATE POLICY "Users can update own comments" ON task_comments
+  FOR UPDATE USING (auth.uid()::text = author_id::text);
+
+CREATE POLICY "Users can delete own comments" ON task_comments
+  FOR DELETE USING (auth.uid()::text = author_id::text);
+```
+
+#### **2. Storage Bucket:**
+```sql
+-- Crear bucket para archivos de tareas
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+  'task-files',
+  'task-files',
+  false,
+  52428800, -- 50MB
+  ARRAY['image/*', 'video/*', 'application/pdf', 'text/*', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/zip', 'application/x-zip-compressed']
+);
+
+-- Políticas RLS para storage
+CREATE POLICY "Users can upload task files" ON storage.objects
+FOR INSERT WITH CHECK (bucket_id = 'task-files' AND auth.role() = 'authenticated');
+
+CREATE POLICY "Users can view task files" ON storage.objects
+FOR SELECT USING (bucket_id = 'task-files' AND auth.role() = 'authenticated');
+
+CREATE POLICY "Users can update task files" ON storage.objects
+FOR UPDATE USING (bucket_id = 'task-files' AND auth.role() = 'authenticated');
+
+CREATE POLICY "Users can delete task files" ON storage.objects
+FOR DELETE USING (bucket_id = 'task-files' AND auth.role() = 'authenticated');
+```
 
 ---
 

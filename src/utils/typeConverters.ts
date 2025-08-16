@@ -75,11 +75,30 @@ export const convertSupabaseTaskToTask = (task: SupabaseTask, profiles: Supabase
   return convertedTask;
 };
 
-// Convertir contenido de Supabase a ContentItem
+// Convertir contenido de Supabase a ContentItem (nueva estructura)
+export const convertSupabaseContentToContent = (item: SupabaseContentItem): ContentItem => ({
+  id: item.id,
+  title: item.title,
+  description: item.description || '',
+  publish_date: item.publish_date ? parseSupabaseDate(item.publish_date) : undefined,
+  content_type: item.content_type,
+  platforms: item.platforms,
+  categories: item.categories,
+  copy_text: item.copy_text || '',
+  media_files: item.media_files || [],
+  project_id: item.project_id,
+  created_by: item.created_by,
+  created_at: new Date(item.created_at),
+  updated_at: new Date(item.updated_at),
+  status: item.status,
+});
+
+// Mantener la función anterior para compatibilidad (deprecated)
+// Esta función usa la estructura antigua de ContentItem
 export const convertSupabaseContentItemToContentItem = (
-  item: SupabaseContentItem, 
+  item: any, // Usar any para evitar errores de tipos
   profiles: SupabaseProfile[]
-): ContentItem => ({
+): any => ({
   id: item.id,
   title: item.title,
   description: item.description || '',

@@ -49,7 +49,7 @@ export interface Milestone {
   description?: string;
 }
 
-export type TaskStatus = 'todo' | 'in-progress' | 'corrections' | 'review' | 'done';
+export type TaskStatus = 'todo' | 'in-progress' | 'corrections' | 'review' | 'done' | 'archived';
 export type TaskPriority = 'low' | 'normal' | 'high' | 'urgent';
 
 export interface TaskFile {
@@ -90,33 +90,44 @@ export interface Subtask {
   position?: number;
 }
 
-export type ContentType = 'post' | 'story' | 'video' | 'article';
-export type ContentPlatform = 'instagram' | 'facebook' | 'twitter' | 'linkedin' | 'tiktok' | 'youtube' | 'blog';
-export type ContentStatus = 'draft' | 'review' | 'approved' | 'scheduled' | 'published';
+// Tipos para el nuevo sistema de contenido
+export type ContentType = 'reel' | 'carousel' | 'story' | 'static' | 'video' | 'image';
+export type ContentPlatform = 'instagram' | 'facebook' | 'youtube' | 'tiktok' | 'twitter' | 'linkedin';
+export type ContentStatus = 'draft' | 'scheduled' | 'published' | 'archived';
 
 export interface ContentItem {
   id: string;
   title: string;
   description?: string;
-  type: ContentType;
-  platform: ContentPlatform;
+  publish_date?: Date;
+  content_type: ContentType;
+  platforms: ContentPlatform[];
+  categories: string[];
+  copy_text?: string;
+  media_files: TaskFile[];
+  project_id: string;
+  created_by?: string;
+  created_at: Date;
+  updated_at: Date;
   status: ContentStatus;
-  scheduledDate?: Date;
-  publishedDate?: Date;
-  content: string;
-  mediaUrls: any[]; // JSONB en Supabase
-  hashtags: any[]; // JSONB en Supabase
-  mentions: any[]; // JSONB en Supabase
-  engagementMetrics?: {
-    likes: number;
-    comments: number;
-    shares: number;
-    views: number;
-  };
-  createdAt: Date;
-  updatedAt: Date;
-  assignee?: User;
-  projectId: string;
+}
+
+// Tipos para Supabase
+export interface SupabaseContentItem {
+  id: string;
+  title: string;
+  description?: string;
+  publish_date?: string; // DATE en Supabase
+  content_type: ContentType;
+  platforms: ContentPlatform[];
+  categories: string[];
+  copy_text?: string;
+  media_files: any; // JSONB en Supabase
+  project_id: string;
+  created_by?: string;
+  created_at: string; // TIMESTAMP en Supabase
+  updated_at: string; // TIMESTAMP en Supabase
+  status: ContentStatus;
 }
 
 

@@ -10,6 +10,8 @@ interface TaskBoardProps {
   onCreateTask: () => void;
   onMarkForReview?: (task: Task) => void;
   onReturnTask?: (task: Task) => void;
+  onConvertToContent?: (task: Task) => void;
+  onArchiveTask?: (task: Task) => void;
 }
 
 const TaskBoard: React.FC<TaskBoardProps> = ({
@@ -19,6 +21,8 @@ const TaskBoard: React.FC<TaskBoardProps> = ({
   onCreateTask,
   onMarkForReview,
   onReturnTask,
+  onConvertToContent,
+  onArchiveTask,
 }) => {
   const [draggedTask, setDraggedTask] = useState<Task | null>(null);
   const statusColumns = [
@@ -183,6 +187,8 @@ const TaskBoard: React.FC<TaskBoardProps> = ({
                     onTaskClick={onTaskClick}
                     onMarkForReview={onMarkForReview}
                     onReturnTask={onReturnTask}
+                    onConvertToContent={onConvertToContent}
+                    onArchiveTask={onArchiveTask}
                     onDragStart={(e) => handleDragStart(e, task)}
                     onDragEnd={handleDragEnd}
                   />

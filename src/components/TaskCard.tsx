@@ -21,6 +21,8 @@ interface TaskCardProps {
   onTaskClick: (task: Task) => void;
   onMarkForReview?: (task: Task) => void;
   onReturnTask?: (task: Task) => void;
+  onConvertToContent?: (task: Task) => void;
+  onArchiveTask?: (task: Task) => void;
   isDragging?: boolean;
   onDragStart?: (e: React.DragEvent) => void;
   onDragEnd?: () => void;
@@ -32,6 +34,8 @@ const TaskCard: React.FC<TaskCardProps> = ({
   onTaskClick,
   onMarkForReview,
   onReturnTask,
+  onConvertToContent,
+  onArchiveTask,
   isDragging = false,
   onDragStart,
   onDragEnd
@@ -280,6 +284,36 @@ const TaskCard: React.FC<TaskCardProps> = ({
               <Paperclip className="w-3 h-3" />
               <span>{task.completedFiles.length}</span>
             </div>
+          )}
+
+          {/* Convert to Content button for completed tasks */}
+          {task.status === 'done' && onConvertToContent && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onConvertToContent(task);
+              }}
+              className="flex items-center space-x-1 px-2 py-1 text-xs bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200 transition-colors"
+              title="Convertir a contenido"
+            >
+              <MessageSquare className="w-3 h-3" />
+              <span>Convertir</span>
+            </button>
+          )}
+
+          {/* Archive button for completed tasks */}
+          {task.status === 'done' && onArchiveTask && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onArchiveTask(task);
+              }}
+              className="flex items-center space-x-1 px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
+              title="Archivar tarea"
+            >
+              <CheckCircle2 className="w-3 h-3" />
+              <span>Archivar</span>
+            </button>
           )}
         </div>
       </div>

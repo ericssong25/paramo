@@ -15,6 +15,7 @@ import SettingsModal from './components/SettingsModal';
 import NotificationsModal from './components/NotificationsModal';
 import Snackbar from './components/Snackbar';
 import { useProjects, useTasks, useContentItems, useProfiles, usePreferences, useSubscriptions, useComments } from './hooks/useSupabase';
+import { useContent } from './hooks/useContent';
 import { useStorage } from './hooks/useStorage';
 import { useAuth } from './hooks/useAuth';
 import { convertSupabaseProjectToProject, convertSupabaseTaskToTask, convertSupabaseContentItemToContentItem } from './utils/typeConverters';
@@ -26,6 +27,10 @@ import TaskList from './components/TaskList';
 import SupabaseErrorComponent from './components/SupabaseError';
 import TaskReviewModal from './components/TaskReviewModal';
 import TaskReturnModal from './components/TaskReturnModal';
+import ConvertToContentModal from './components/ConvertToContentModal';
+import ContentViewModal from './components/ContentViewModal';
+import EditContentModal from './components/EditContentModal';
+import DeleteContentConfirmationModal from './components/DeleteContentConfirmationModal';
 import { 
   mockUsers, 
   mockClients, 
@@ -37,11 +42,21 @@ function App() {
   const { projects: supabaseProjects, loading: projectsLoading, error: projectsError, createProject, updateProject } = useProjects();
   const { tasks: supabaseTasks, loading: tasksLoading, error: tasksError, createTask, updateTask, deleteTask, updateSubtaskPositions, createSubtask, updateSubtask, deleteSubtask, setLocalTasks } = useTasks();
   const { addComment } = useComments();
-  const { contentItems: supabaseContentItems, loading: contentLoading, error: contentError } = useContentItems();
+
   const { profiles: supabaseProfiles, loading: profilesLoading, error: profilesError } = useProfiles();
   const { fetchPreferencesForUser, upsertPreferences } = usePreferences();
   const { subscriptions, loading: subscriptionsLoading, error: subscriptionsError, createSubscription, updateSubscription, deleteSubscription } = useSubscriptions();
   const { deleteFilesByTask } = useStorage();
+    const {
+    contentItems: newContentItems,
+    loading: newContentLoading,
+    error: newContentError,
+    convertTaskToContent,
+    archiveTask,
+    deleteContentItem,
+    updateContentItem,
+    markAsPublished
+  } = useContent();
 
   // Hook de autenticación
   const { user, loading: authLoading, signOut, isAuthenticated } = useAuth();
@@ -76,6 +91,13 @@ function App() {
   const [taskForReview, setTaskForReview] = useState<Task | null>(null);
   const [isTaskReturnModalOpen, setIsTaskReturnModalOpen] = useState(false);
   const [taskForReturn, setTaskForReturn] = useState<Task | null>(null);
+  const [isConvertToContentModalOpen, setIsConvertToContentModalOpen] = useState(false);
+  const [taskForConversion, setTaskForConversion] = useState<Task | null>(null);
+  const [isContentViewModalOpen, setIsContentViewModalOpen] = useState(false);
+  const [selectedContent, setSelectedContent] = useState<ContentItem | null>(null);
+  const [isEditContentModalOpen, setIsEditContentModalOpen] = useState(false);
+  const [isDeleteContentModalOpen, setIsDeleteContentModalOpen] = useState(false);
+  const [contentToDelete, setContentToDelete] = useState<ContentItem | null>(null);
   const [selectedTask, setSelectedTask] = useState<Task | undefined>(undefined);
   const [selectedProject, setSelectedProject] = useState<Project | undefined>(undefined);
   const [searchQuery, setSearchQuery] = useState('');
@@ -145,8 +167,8 @@ function App() {
   }, [supabaseProjects, tasks]);
 
   const contentItems = useMemo(() => {
-    return supabaseContentItems.map(item => convertSupabaseContentItemToContentItem(item, supabaseProfiles));
-  }, [supabaseContentItems, supabaseProfiles]);
+    return newContentItems;
+  }, [newContentItems]);
 
   const selectableUsers = useMemo(() => {
     return supabaseProfiles
@@ -291,7 +313,7 @@ function App() {
         };
         console.log('📤 App: Datos a enviar a Supabase:', updateData);
         
-        await updateTask(selectedTask.id, updateData);
+        await updateTask(selectedTask.id, updateData as any);
         console.log('✅ App: Tarea actualizada exitosamente');
       } else {
         // Create new task
@@ -304,7 +326,7 @@ function App() {
           due_date: formatDateForSupabase(taskData.dueDate),
           project_id: taskData.projectId || selectedProjectId || projects[0]?.id,
           tags: taskData.tags || [],
-        });
+        } as any);
       }
     } catch (error) {
       console.error('Error saving task:', error);
@@ -395,6 +417,8 @@ function App() {
     }
   };
 
+
+
   const handleStatusChange = async (taskId: string, newStatus: TaskStatus) => {
     try {
       console.log('🔄 Cambiando estado de tarea:', taskId, 'a', newStatus);
@@ -416,7 +440,7 @@ function App() {
         } as any);
       } else {
         // Actualización normal sin eliminar archivos
-        await updateTask(taskId, { status: newStatus });
+        await updateTask(taskId, { status: newStatus } as any);
       }
       
       // Mostrar snackbar con el nuevo estado
@@ -425,7 +449,8 @@ function App() {
         'in-progress': 'Tarea marcada como en progreso',
         'corrections': 'Tarea marcada para correcciones',
         'review': 'Tarea marcada para revisión',
-        'done': 'Tarea marcada como completada'
+        'done': 'Tarea marcada como completada',
+        'archived': 'Tarea archivada'
       };
       
       showSnackbar(statusMessages[newStatus] || 'Estado actualizado', 'success');
@@ -436,6 +461,105 @@ function App() {
     } catch (error) {
       console.error('❌ Error al cambiar estado de tarea:', error);
       showSnackbar('Error al actualizar estado de tarea', 'error');
+    }
+  };
+
+  // Funciones para convertir tareas a contenido
+  const handleConvertToContent = (task: Task) => {
+    setTaskForConversion(task);
+    setIsConvertToContentModalOpen(true);
+  };
+
+  const handleArchiveTask = async (task: Task) => {
+    try {
+      await archiveTask(task.id);
+      showSnackbar('Tarea archivada exitosamente', 'success');
+    } catch (error) {
+      console.error('Error archiving task:', error);
+      showSnackbar('Error al archivar tarea', 'error');
+    }
+  };
+
+  const handleConvertSubmit = async (taskId: string, contentData: {
+    content_type: ContentItem['content_type'];
+    platforms: ContentItem['platforms'];
+    categories: string[];
+    copy_text?: string;
+    publish_date?: Date;
+  }) => {
+    try {
+      await convertTaskToContent(taskId, contentData);
+      showSnackbar('Tarea convertida a contenido exitosamente', 'success');
+      setIsConvertToContentModalOpen(false);
+      setTaskForConversion(null);
+    } catch (error) {
+      console.error('Error converting task to content:', error);
+      showSnackbar('Error al convertir tarea a contenido', 'error');
+    }
+  };
+
+  // Funciones para manejar contenido
+  const handleViewContent = (content: ContentItem) => {
+    setSelectedContent(content);
+    setIsContentViewModalOpen(true);
+  };
+
+  const handleEditContent = (content: ContentItem) => {
+    setSelectedContent(content);
+    setIsEditContentModalOpen(true);
+  };
+
+  const handleDeleteContent = async (contentId: string) => {
+    try {
+      await deleteContentItem(contentId);
+      showSnackbar('Contenido eliminado exitosamente', 'success');
+    } catch (error) {
+      console.error('Error deleting content:', error);
+      showSnackbar('Error al eliminar contenido', 'error');
+    }
+  };
+
+  const handleShowDeleteConfirmation = (content: ContentItem) => {
+    setContentToDelete(content);
+    setIsDeleteContentModalOpen(true);
+  };
+
+  const handleSaveContent = async (contentId: string, contentData: {
+    content_type: ContentItem['content_type'];
+    platforms: ContentItem['platforms'];
+    categories: ContentItem['categories'];
+    copy_text?: string;
+    publish_date?: Date;
+    title?: string;
+    description?: string;
+    status?: ContentItem['status'];
+  }) => {
+    try {
+      await updateContentItem(contentId, contentData);
+      showSnackbar('Contenido actualizado exitosamente', 'success');
+    } catch (error) {
+      console.error('Error updating content:', error);
+      showSnackbar('Error al actualizar contenido', 'error');
+    }
+  };
+
+  const handleMarkAsPublished = async (contentId: string) => {
+    try {
+      await markAsPublished(contentId);
+      showSnackbar('Contenido marcado como publicado exitosamente', 'success');
+    } catch (error) {
+      console.error('Error marking content as published:', error);
+      showSnackbar('Error al marcar como publicado', 'error');
+    }
+  };
+
+  const handleDownloadContentFile = async (file: TaskFile) => {
+    try {
+      // TODO: Implementar descarga de archivos de contenido
+      console.log('Download content file:', file);
+    } catch (error) {
+      console.error('Error downloading content file:', error);
+      showSnackbar('Error al descargar archivo', 'error');
     }
   };
 
@@ -742,9 +866,7 @@ function App() {
     console.log('Create content');
   };
 
-  const handleEditContent = (content: ContentItem) => {
-    console.log('Edit content:', content);
-  };
+
 
   const handleConvertTaskToContent = (task: Task) => {
     console.log('Convert task to content:', task);
@@ -821,10 +943,10 @@ function App() {
   };
 
   // Loading states
-  const isLoading = projectsLoading || tasksLoading || contentLoading || profilesLoading || subscriptionsLoading || authLoading;
+  const isLoading = projectsLoading || tasksLoading || newContentLoading || profilesLoading || subscriptionsLoading || authLoading;
 
   // Error states
-  const hasError = projectsError || tasksError || contentError || profilesError || subscriptionsError;
+  const hasError = projectsError || tasksError || newContentError || profilesError || subscriptionsError;
 
   // Si está cargando la autenticación, mostrar loading
   if (authLoading) {
@@ -892,10 +1014,11 @@ function App() {
           onEditTask={handleEditTask}
           onCreateTask={handleCreateTask}
           onCreateContent={handleCreateContent}
-          onEditContent={handleEditContent}
+          onViewContent={handleViewContent}
           onEditProject={handleEditProject}
           onBackToOverview={handleBackToOverview}
           onNavigateToContentCalendar={handleNavigateToContentCalendar}
+          onMarkAsPublished={handleMarkAsPublished}
         />
       );
     }
@@ -904,14 +1027,15 @@ function App() {
     switch (activeView) {
       case 'content':
         return (
-          <ContentCalendar
-            contentItems={contentItems}
-            tasks={tasks}
-            onCreateContent={handleCreateContent}
-            onEditContent={handleEditContent}
-            onConvertTaskToContent={handleConvertTaskToContent}
-            onViewTask={handleViewTask}
-          />
+                      <ContentCalendar
+              contentItems={contentItems}
+              tasks={tasks}
+              onCreateContent={handleCreateContent}
+              onViewContent={handleViewContent}
+              onConvertTaskToContent={handleConvertTaskToContent}
+              onViewTask={handleViewTask}
+              onMarkAsPublished={handleMarkAsPublished}
+            />
         );
       case 'subscriptions':
         return (
@@ -963,6 +1087,8 @@ function App() {
             onCreateTask={handleCreateTask}
             onMarkForReview={handleMarkForReview}
             onReturnTask={handleReturnTask}
+            onConvertToContent={handleConvertToContent}
+            onArchiveTask={handleArchiveTask}
           />
         );
     }
@@ -1019,9 +1145,9 @@ function App() {
                 className="mb-2"
               />
             )}
-            {contentError && (
+            {newContentError && (
               <SupabaseErrorComponent 
-                error={contentError} 
+                error={newContentError} 
                 onClose={() => {}} 
                 className="mb-2"
               />
@@ -1141,6 +1267,61 @@ function App() {
             }}
             taskTitle={taskForReturn.title}
             onConfirm={handleReturnSubmit}
+          />
+        )}
+
+        {/* Convert to Content Modal */}
+        {taskForConversion && (
+          <ConvertToContentModal
+            isOpen={isConvertToContentModalOpen}
+            onClose={() => {
+              setIsConvertToContentModalOpen(false);
+              setTaskForConversion(null);
+            }}
+            task={taskForConversion}
+            onConvert={handleConvertSubmit}
+          />
+        )}
+
+        {/* Content View Modal */}
+                    {selectedContent && (
+              <ContentViewModal
+                isOpen={isContentViewModalOpen}
+                onClose={() => {
+                  setIsContentViewModalOpen(false);
+                  setSelectedContent(null);
+                }}
+                content={selectedContent}
+                onEdit={handleEditContent}
+                onDelete={handleShowDeleteConfirmation}
+                onDownloadFile={handleDownloadContentFile}
+                onMarkAsPublished={handleMarkAsPublished}
+              />
+            )}
+
+        {/* Edit Content Modal */}
+        {selectedContent && (
+          <EditContentModal
+            isOpen={isEditContentModalOpen}
+            onClose={() => {
+              setIsEditContentModalOpen(false);
+              setSelectedContent(null);
+            }}
+            content={selectedContent}
+            onSave={handleSaveContent}
+          />
+        )}
+
+        {/* Delete Content Confirmation Modal */}
+        {contentToDelete && (
+          <DeleteContentConfirmationModal
+            isOpen={isDeleteContentModalOpen}
+            onClose={() => {
+              setIsDeleteContentModalOpen(false);
+              setContentToDelete(null);
+            }}
+            content={contentToDelete}
+            onConfirm={handleDeleteContent}
           />
         )}
 

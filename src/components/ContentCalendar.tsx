@@ -27,19 +27,22 @@ interface ContentCalendarProps {
   contentItems: ContentItem[];
   tasks: Task[];
   onCreateContent: () => void;
-  onEditContent: (content: ContentItem) => void;
+  onViewContent: (content: ContentItem) => void;
   onConvertTaskToContent: (task: Task) => void;
   onViewTask: (task: Task) => void;
+  onMarkAsPublished?: (contentId: string) => void;
 }
 
 const ContentCalendar: React.FC<ContentCalendarProps> = ({
   contentItems,
   tasks,
   onCreateContent,
-  onEditContent,
+  onViewContent,
   onConvertTaskToContent,
   onViewTask,
+  onMarkAsPublished,
 }) => {
+
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<'month' | 'week' | 'list'>('month');
   const [filterMode, setFilterMode] = useState<'all' | 'content' | 'tasks'>('all');
@@ -72,8 +75,29 @@ const ContentCalendar: React.FC<ContentCalendarProps> = ({
     switch (status) {
       case 'published': return <CheckCircle className="w-3 h-3 text-green-600" />;
       case 'scheduled': return <Clock className="w-3 h-3 text-blue-600" />;
-      case 'review': return <Eye className="w-3 h-3 text-yellow-600" />;
+      case 'draft': return <Edit className="w-3 h-3 text-gray-600" />;
+      case 'archived': return <XCircle className="w-3 h-3 text-red-600" />;
       default: return <Edit className="w-3 h-3 text-gray-600" />;
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'published': return 'bg-green-100 text-green-700 border-green-200';
+      case 'scheduled': return 'bg-blue-100 text-blue-700 border-blue-200';
+      case 'draft': return 'bg-gray-100 text-gray-700 border-gray-200';
+      case 'archived': return 'bg-red-100 text-red-700 border-red-200';
+      default: return 'bg-gray-100 text-gray-700 border-gray-200';
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'published': return 'Publicado';
+      case 'scheduled': return 'Programado';
+      case 'draft': return 'Borrador';
+      case 'archived': return 'Archivado';
+      default: return status;
     }
   };
 
@@ -117,13 +141,16 @@ const ContentCalendar: React.FC<ContentCalendarProps> = ({
     if (!date || filterMode === 'tasks') return [];
     
     return contentItems.filter(item => {
-      const itemDate = item.scheduledDate || item.publishedDate;
+      const itemDate = item.publish_date;
       if (!itemDate) return false;
       
+      // Convertir la fecha del contenido a la zona horaria local para comparación correcta
+      const localItemDate = new Date(itemDate.getTime() + (itemDate.getTimezoneOffset() * 60000));
+      
       return (
-        itemDate.getDate() === date.getDate() &&
-        itemDate.getMonth() === date.getMonth() &&
-        itemDate.getFullYear() === date.getFullYear()
+        localItemDate.getDate() === date.getDate() &&
+        localItemDate.getMonth() === date.getMonth() &&
+        localItemDate.getFullYear() === date.getFullYear()
       );
     });
   };
@@ -437,17 +464,38 @@ const ContentCalendar: React.FC<ContentCalendarProps> = ({
                               </div>
                               <div className="flex-1 space-y-2">
                                 {entries.map((e, i) => e.type === 'content' ? (
-                                  <div key={`c-${i}`} onClick={() => onEditContent(e.c)} className={`p-2 rounded border hover:shadow-sm cursor-pointer transition ${getPlatformColor(e.c.platform)}`}>
+                                  <div key={`c-${i}`} className={`p-2 rounded border hover:shadow-sm transition ${getPlatformColor(e.c.platforms[0] || 'default')}`}>
                                     <div className="flex items-center justify-between">
-                                      <div className="flex items-center gap-2">
-                                        {getPlatformIcon(e.c.platform)}
+                                      <div className="flex items-center gap-2 flex-1" onClick={() => onViewContent(e.c)} style={{ cursor: 'pointer' }}>
+                                        {getPlatformIcon(e.c.platforms[0] || 'default')}
                                         <span className="font-medium truncate">{e.c.title}</span>
                                       </div>
-                                      <div className="text-xs opacity-75">
-                                        {e.c.scheduledDate?.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                                      <div className="flex items-center gap-2">
+                                        <div className="text-xs opacity-75">
+                                          {e.c.publish_date?.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                                        </div>
+                                        {onMarkAsPublished && e.c.status !== 'published' && (
+                                          <button
+                                            onClick={(event) => {
+                                              event.stopPropagation();
+                                              onMarkAsPublished(e.c.id);
+                                            }}
+                                            className="px-2 py-1 text-xs bg-green-100 text-green-700 hover:bg-green-200 rounded transition-colors"
+                                            title="Marcar como publicado"
+                                          >
+                                            Publicar
+                                          </button>
+                                        )}
                                       </div>
                                     </div>
-                                    <div className="text-xs opacity-75 mt-1 capitalize">{e.c.status}</div>
+                                    <div className="flex items-center justify-between mt-1">
+                                      <div className="flex items-center gap-1">
+                                        {getStatusIcon(e.c.status)}
+                                        <span className={`text-xs px-2 py-1 rounded-full border ${getStatusColor(e.c.status)}`}>
+                                          {getStatusLabel(e.c.status)}
+                                        </span>
+                                      </div>
+                                    </div>
                                   </div>
                                 ) : (
                                   <div 
@@ -535,27 +583,46 @@ const ContentCalendar: React.FC<ContentCalendarProps> = ({
                               item.type === 'content' ? (
                                 <div
                                   key={item.item.id}
+                                  className={`p-1 rounded text-xs border hover:shadow-sm transition-all cursor-pointer ${getPlatformColor(item.item.platforms[0] || 'default')}`}
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    onEditContent(item.item);
+                                    onViewContent(item.item);
                                   }}
-                                  className={`p-1 rounded text-xs border cursor-pointer hover:shadow-sm transition-all ${getPlatformColor(item.item.platform)}`}
                                 >
-                                  <div className="flex items-center space-x-1">
-                                    {getPlatformIcon(item.item.platform)}
-                                    {getStatusIcon(item.item.status)}
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center space-x-1 flex-1">
+                                      {getPlatformIcon(item.item.platforms[0] || 'default')}
+                                      {getStatusIcon(item.item.status)}
+                                    </div>
+                                    {onMarkAsPublished && item.item.status !== 'published' && (
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          onMarkAsPublished(item.item.id);
+                                        }}
+                                        className="px-1 py-0.5 text-xs bg-green-100 text-green-700 hover:bg-green-200 rounded transition-colors"
+                                        title="Publicar"
+                                      >
+                                        ✓
+                                      </button>
+                                    )}
                                   </div>
                                   <div className="truncate mt-1 font-medium">
                                     {item.item.title}
                                   </div>
-                                  {item.item.scheduledDate && (
+                                  <div className="flex items-center justify-between">
+                                    {item.item.publish_date && (
+                                      <div className="text-xs opacity-75">
+                                        {item.item.publish_date.toLocaleTimeString('en-US', { 
+                                          hour: 'numeric', 
+                                          minute: '2-digit' 
+                                        })}
+                                      </div>
+                                    )}
                                     <div className="text-xs opacity-75">
-                                      {item.item.scheduledDate.toLocaleTimeString('en-US', { 
-                                        hour: 'numeric', 
-                                        minute: '2-digit' 
-                                      })}
+                                      {getStatusLabel(item.item.status)}
                                     </div>
-                                  )}
+                                  </div>
                                 </div>
                               ) : (
                                 <div
@@ -617,7 +684,7 @@ const ContentCalendar: React.FC<ContentCalendarProps> = ({
           tasks={getTasksForDate(selectedDay)}
           contentItems={getContentForDate(selectedDay)}
           onViewTask={onViewTask}
-          onEditContent={onEditContent}
+                      onViewContent={onViewContent}
           onConvertTaskToContent={onConvertTaskToContent}
         />
       )}

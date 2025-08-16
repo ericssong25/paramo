@@ -27,10 +27,11 @@ interface ProjectHubProps {
   onEditTask: (task: Task) => void;
   onCreateTask: () => void;
   onCreateContent: () => void;
-  onEditContent: (content: ContentItem) => void;
+  onViewContent: (content: ContentItem) => void;
   onEditProject: (project: Project) => void;
   onBackToOverview: () => void;
   onNavigateToContentCalendar: () => void;
+  onMarkAsPublished?: (contentId: string) => void;
 }
 
 const ProjectHub: React.FC<ProjectHubProps> = ({
@@ -42,10 +43,11 @@ const ProjectHub: React.FC<ProjectHubProps> = ({
   onEditTask,
   onCreateTask,
   onCreateContent,
-  onEditContent,
+  onViewContent,
   onEditProject,
   onBackToOverview,
   onNavigateToContentCalendar,
+  onMarkAsPublished,
 }) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'tasks' | 'calendar'>('overview');
   const [taskFilters, setTaskFilters] = useState({
@@ -67,7 +69,9 @@ const ProjectHub: React.FC<ProjectHubProps> = ({
   }, [project.id]);
 
   const projectTasks = tasks.filter(task => task.projectId === project.id);
-  const projectContentItems = contentItems.filter(item => item.projectId === project.id);
+  const projectContentItems = contentItems.filter(item => item.project_id === project.id);
+  
+
   const completedTasks = projectTasks.filter(task => task.status === 'done');
   const progressPercentage = projectTasks.length > 0 
     ? Math.round((completedTasks.length / projectTasks.length) * 100) 
@@ -585,17 +589,20 @@ const ProjectHub: React.FC<ProjectHubProps> = ({
           </div>
                                    ) : (
             <div className="p-6">
-              <ContentCalendar
-               contentItems={projectContentItems}
-               tasks={projectTasks}
-               onCreateContent={onCreateContent}
-               onEditContent={onEditContent}
-               onConvertTaskToContent={(task) => {
-                 console.log('Convertir tarea a contenido:', task);
-                 onCreateContent();
-               }}
-               onViewTask={onTaskClick}
-             />
+                            <ContentCalendar
+                contentItems={projectContentItems}
+                tasks={projectTasks}
+                onCreateContent={onCreateContent}
+                onViewContent={onViewContent}
+                onConvertTaskToContent={(task) => {
+                  console.log('Convertir tarea a contenido desde ProjectHub:', task);
+                  // TODO: Implementar conversión de tarea a contenido en ProjectHub
+                  // Por ahora, solo mostrar un mensaje
+                  alert('Funcionalidad de conversión de tarea a contenido no implementada en ProjectHub');
+                }}
+                onViewTask={onTaskClick}
+                onMarkAsPublished={onMarkAsPublished}
+              />
            </div>
          )}
       </div>
