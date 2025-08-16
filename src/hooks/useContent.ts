@@ -126,6 +126,41 @@ export const useContent = () => {
   // Eliminar elemento de contenido
   const deleteContentItem = async (id: string) => {
     try {
+      // 1. Primero obtener el contenido para acceder a los archivos
+      const { data: contentData, error: fetchError } = await supabase
+        .from('content_items')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // 2. Eliminar archivos del storage si existen
+      if (contentData.media_files && contentData.media_files.length > 0) {
+        console.log('🗑️ Eliminando archivos asociados al contenido:', contentData.media_files.length);
+        
+        // Extraer las rutas de los archivos
+        const filePaths = contentData.media_files
+          .filter((file: any) => file.path) // Solo archivos con path
+          .map((file: any) => file.path);
+
+        if (filePaths.length > 0) {
+          console.log('🗂️ Rutas de archivos a eliminar:', filePaths);
+          
+          const { error: storageError } = await supabase.storage
+            .from('task-files')
+            .remove(filePaths);
+
+          if (storageError) {
+            console.error('❌ Error al eliminar archivos del storage:', storageError);
+            // No lanzar error aquí, continuar con la eliminación del contenido
+          } else {
+            console.log('✅ Archivos eliminados del storage exitosamente');
+          }
+        }
+      }
+
+      // 3. Eliminar el registro de la base de datos
       const { error } = await supabase
         .from('content_items')
         .delete()
@@ -133,7 +168,10 @@ export const useContent = () => {
 
       if (error) throw error;
 
+      // 4. Actualizar estado local
       setContentItems(prev => prev.filter(item => item.id !== id));
+      
+      console.log('✅ Contenido eliminado exitosamente');
     } catch (err) {
       console.error('Error deleting content item:', err);
       setError(err instanceof Error ? err.message : 'Error al eliminar contenido');

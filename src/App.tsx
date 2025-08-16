@@ -14,7 +14,7 @@ import LoginModal from './components/LoginModal';
 import SettingsModal from './components/SettingsModal';
 import NotificationsModal from './components/NotificationsModal';
 import Snackbar from './components/Snackbar';
-import { useProjects, useTasks, useContentItems, useProfiles, usePreferences, useSubscriptions, useComments } from './hooks/useSupabase';
+import { useProjects, useTasks, useContentItems, useProfiles, usePreferences, useSubscriptions, useComments, useSupabase } from './hooks/useSupabase';
 import { useContent } from './hooks/useContent';
 import { useStorage } from './hooks/useStorage';
 import { useAuth } from './hooks/useAuth';
@@ -513,6 +513,10 @@ function App() {
     try {
       await deleteContentItem(contentId);
       showSnackbar('Contenido eliminado exitosamente', 'success');
+      
+      // Cerrar el modal del contenido después de eliminar
+      setIsContentViewModalOpen(false);
+      setSelectedContent(null);
     } catch (error) {
       console.error('Error deleting content:', error);
       showSnackbar('Error al eliminar contenido', 'error');
@@ -555,11 +559,54 @@ function App() {
 
   const handleDownloadContentFile = async (file: TaskFile) => {
     try {
-      // TODO: Implementar descarga de archivos de contenido
-      console.log('Download content file:', file);
+      const { supabase } = useSupabase();
+      
+      if (!file.path) {
+        showSnackbar('Error: Ruta del archivo no encontrada', 'error');
+        return;
+      }
+      
+      // Descargar el archivo directamente usando el método de TaskView
+      const { data, error } = await supabase.storage
+        .from('task-files')
+        .download(file.path);
+      
+      if (error) {
+        console.error('Error downloading file:', error);
+        showSnackbar('Error al descargar archivo', 'error');
+        return;
+      }
+      
+      // Crear URL del blob y descargar
+      const url = URL.createObjectURL(data);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = file.name;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      showSnackbar('Descarga iniciada', 'success');
     } catch (error) {
       console.error('Error downloading content file:', error);
       showSnackbar('Error al descargar archivo', 'error');
+    }
+  };
+
+  const handleDownloadAllContentFiles = async (files: TaskFile[]) => {
+    if (!files || files.length === 0) return;
+    
+    try {
+      for (const file of files) {
+        await handleDownloadContentFile(file);
+        // Pequeña pausa entre descargas para evitar problemas del navegador
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      showSnackbar('Descarga de todos los archivos completada', 'success');
+    } catch (error) {
+      console.error('Error downloading all content files:', error);
+      showSnackbar('Error al descargar todos los archivos', 'error');
     }
   };
 
@@ -1292,10 +1339,11 @@ function App() {
                   setSelectedContent(null);
                 }}
                 content={selectedContent}
-                onEdit={handleEditContent}
-                onDelete={handleShowDeleteConfirmation}
-                onDownloadFile={handleDownloadContentFile}
-                onMarkAsPublished={handleMarkAsPublished}
+                                     onEdit={handleEditContent}
+                     onDelete={handleShowDeleteConfirmation}
+                     onDownloadFile={handleDownloadContentFile}
+                     onDownloadAllFiles={handleDownloadAllContentFiles}
+                     onMarkAsPublished={handleMarkAsPublished}
               />
             )}
 

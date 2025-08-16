@@ -9,6 +9,7 @@ interface ContentViewModalProps {
   onEdit?: (content: ContentItem) => void;
   onDelete?: (content: ContentItem) => void;
   onDownloadFile?: (file: TaskFile) => void;
+  onDownloadAllFiles?: (files: TaskFile[]) => void;
   onMarkAsPublished?: (contentId: string) => void;
 }
 
@@ -19,6 +20,7 @@ const ContentViewModal: React.FC<ContentViewModalProps> = ({
   onEdit,
   onDelete,
   onDownloadFile,
+  onDownloadAllFiles,
   onMarkAsPublished
 }) => {
   const [copied, setCopied] = React.useState(false);
@@ -247,13 +249,24 @@ const ContentViewModal: React.FC<ContentViewModalProps> = ({
             </div>
           </div>
 
-          {/* Archivos - Posicionado entre las primeras secciones */}
-          {content.media_files && content.media_files.length > 0 && (
-            <div>
-              <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center">
-                <Download className="w-4 h-4 mr-2" />
-                Archivos ({content.media_files.length})
-              </h3>
+                     {/* Archivos - Posicionado entre las primeras secciones */}
+           {content.media_files && content.media_files.length > 0 && (
+             <div>
+               <div className="flex items-center justify-between mb-3">
+                 <h3 className="text-sm font-medium text-gray-700 flex items-center">
+                   <Download className="w-4 h-4 mr-2" />
+                   Archivos ({content.media_files.length})
+                 </h3>
+                 {onDownloadAllFiles && content.media_files.length > 1 && (
+                   <button
+                     onClick={() => onDownloadAllFiles(content.media_files)}
+                     className="px-3 py-1 text-sm bg-blue-100 text-blue-700 hover:bg-blue-200 rounded-lg transition-colors flex items-center"
+                   >
+                     <Download className="w-4 h-4 mr-1" />
+                     Descargar todo
+                   </button>
+                 )}
+               </div>
               <div className="space-y-2">
                 {content.media_files.map((file, index) => (
                   <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">

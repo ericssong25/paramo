@@ -9,7 +9,7 @@ import {
   Trash2,
   Tag
 } from 'lucide-react';
-import { Task, TaskPriority, TaskStatus, User as UserType } from '../types';
+import { Task, TaskPriority, User as UserType } from '../types';
 import { formatDateForSupabase, parseSupabaseDate } from '../utils/dateUtils';
 
 interface TaskModalProps {
@@ -35,7 +35,6 @@ const TaskModal: React.FC<TaskModalProps> = ({
     title: '',
     description: '',
     priority: 'normal' as TaskPriority,
-    status: 'todo' as TaskStatus,
     assigneeId: '',
     dueDate: '',
     tags: [] as string[],
@@ -50,7 +49,6 @@ const TaskModal: React.FC<TaskModalProps> = ({
         title: task.title,
         description: task.description,
         priority: task.priority,
-        status: task.status,
         assigneeId: task.assignee?.id || '',
         dueDate: task.dueDate ? formatDateForSupabase(task.dueDate) || '' : '',
         tags: [...task.tags],
@@ -61,7 +59,6 @@ const TaskModal: React.FC<TaskModalProps> = ({
         title: '',
         description: '',
         priority: 'normal',
-        status: 'todo',
         assigneeId: '',
         dueDate: '',
         tags: [],
@@ -80,7 +77,7 @@ const TaskModal: React.FC<TaskModalProps> = ({
       title: formData.title,
       description: formData.description,
       priority: formData.priority,
-      status: formData.status,
+      status: task ? task.status : 'todo', // Mantener status actual si es edición, 'todo' si es nueva
       assignee: formData.assigneeId ? users.find(u => u.id === formData.assigneeId) : undefined,
       dueDate: formData.dueDate ? parseSupabaseDate(formData.dueDate) : undefined,
       tags: formData.tags,
@@ -99,7 +96,6 @@ const TaskModal: React.FC<TaskModalProps> = ({
       title: '',
       description: '',
       priority: 'normal',
-      status: 'todo',
       assigneeId: '',
       dueDate: '',
       tags: [],
@@ -279,21 +275,7 @@ const TaskModal: React.FC<TaskModalProps> = ({
                   </select>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Status
-                  </label>
-                  <select
-                    value={formData.status}
-                    onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value as TaskStatus }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="todo">To Do</option>
-                    <option value="in-progress">In Progress</option>
-                    <option value="review">Review</option>
-                    <option value="done">Done</option>
-                  </select>
-                </div>
+
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
