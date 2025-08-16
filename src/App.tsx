@@ -14,14 +14,18 @@ import LoginModal from './components/LoginModal';
 import SettingsModal from './components/SettingsModal';
 import NotificationsModal from './components/NotificationsModal';
 import Snackbar from './components/Snackbar';
-import { useProjects, useTasks, useContentItems, useProfiles, usePreferences, useSubscriptions } from './hooks/useSupabase';
+import { useProjects, useTasks, useContentItems, useProfiles, usePreferences, useSubscriptions, useComments } from './hooks/useSupabase';
+import { useStorage } from './hooks/useStorage';
 import { useAuth } from './hooks/useAuth';
 import { convertSupabaseProjectToProject, convertSupabaseTaskToTask, convertSupabaseContentItemToContentItem } from './utils/typeConverters';
-import { Project, Task, ContentItem, User, TaskStatus, Client, Approval, TaskFilter, Subscription } from './types';
+import { formatDateForSupabase } from './utils/dateUtils';
+import { Project, Task, ContentItem, User, TaskStatus, Client, Approval, TaskFilter, Subscription, TaskFile } from './types';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import ContentCalendar from './components/ContentCalendar';
 import TaskList from './components/TaskList';
 import SupabaseErrorComponent from './components/SupabaseError';
+import TaskReviewModal from './components/TaskReviewModal';
+import TaskReturnModal from './components/TaskReturnModal';
 import { 
   mockUsers, 
   mockClients, 
@@ -32,10 +36,12 @@ function App() {
   // Hooks de Supabase
   const { projects: supabaseProjects, loading: projectsLoading, error: projectsError, createProject, updateProject } = useProjects();
   const { tasks: supabaseTasks, loading: tasksLoading, error: tasksError, createTask, updateTask, deleteTask, updateSubtaskPositions, createSubtask, updateSubtask, deleteSubtask, setLocalTasks } = useTasks();
+  const { addComment } = useComments();
   const { contentItems: supabaseContentItems, loading: contentLoading, error: contentError } = useContentItems();
   const { profiles: supabaseProfiles, loading: profilesLoading, error: profilesError } = useProfiles();
   const { fetchPreferencesForUser, upsertPreferences } = usePreferences();
   const { subscriptions, loading: subscriptionsLoading, error: subscriptionsError, createSubscription, updateSubscription, deleteSubscription } = useSubscriptions();
+  const { deleteFilesByTask } = useStorage();
 
   // Hook de autenticación
   const { user, loading: authLoading, signOut, isAuthenticated } = useAuth();
@@ -66,6 +72,10 @@ function App() {
   const [isProjectSelectionModalOpen, setIsProjectSelectionModalOpen] = useState(false);
   const [isTaskViewOpen, setIsTaskViewOpen] = useState(false);
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
+  const [isTaskReviewModalOpen, setIsTaskReviewModalOpen] = useState(false);
+  const [taskForReview, setTaskForReview] = useState<Task | null>(null);
+  const [isTaskReturnModalOpen, setIsTaskReturnModalOpen] = useState(false);
+  const [taskForReturn, setTaskForReturn] = useState<Task | null>(null);
   const [selectedTask, setSelectedTask] = useState<Task | undefined>(undefined);
   const [selectedProject, setSelectedProject] = useState<Project | undefined>(undefined);
   const [searchQuery, setSearchQuery] = useState('');
@@ -262,18 +272,27 @@ function App() {
 
   const handleSaveTask = async (taskData: Partial<Task>) => {
     try {
+      console.log('🔄 App: handleSaveTask iniciado');
+      console.log('📅 Due Date recibido:', taskData.dueDate);
+      console.log('📅 Due Date formateado para Supabase:', formatDateForSupabase(taskData.dueDate));
+      
       if (selectedTask) {
+        console.log('🔄 App: Actualizando tarea existente:', selectedTask.id);
         // Update existing task
-        await updateTask(selectedTask.id, {
+        const updateData = {
           title: taskData.title,
           description: taskData.description,
           status: taskData.status,
           priority: taskData.priority,
           assignee_id: taskData.assignee?.id || null,
-          due_date: taskData.dueDate?.toISOString().split('T')[0],
+          due_date: formatDateForSupabase(taskData.dueDate),
           project_id: selectedProjectId || taskData.projectId || selectedTask.projectId,
           tags: taskData.tags,
-        });
+        };
+        console.log('📤 App: Datos a enviar a Supabase:', updateData);
+        
+        await updateTask(selectedTask.id, updateData);
+        console.log('✅ App: Tarea actualizada exitosamente');
       } else {
         // Create new task
         await createTask({
@@ -282,7 +301,7 @@ function App() {
           status: taskData.status || 'todo',
           priority: taskData.priority || 'normal',
           assignee_id: taskData.assignee?.id || null,
-          due_date: taskData.dueDate?.toISOString().split('T')[0],
+          due_date: formatDateForSupabase(taskData.dueDate),
           project_id: taskData.projectId || selectedProjectId || projects[0]?.id,
           tags: taskData.tags || [],
         });
@@ -300,16 +319,111 @@ function App() {
     }
   };
 
+  const handleMarkForReview = (task: Task) => {
+    setTaskForReview(task);
+    setIsTaskReviewModalOpen(true);
+  };
+
+  const handleReviewSubmit = async (taskId: string, files: TaskFile[], notes?: string) => {
+    try {
+      const updateData = {
+        status: 'review' as const,
+        completed_files: files,
+        review_date: new Date().toISOString(),
+        review_notes: notes || null,
+      };
+      
+      await updateTask(taskId, updateData);
+      setSnackbar({ 
+        isOpen: true,
+        message: `Tarea marcada para revisión${files.length > 0 ? ` con ${files.length} archivo${files.length > 1 ? 's' : ''}` : ''}`, 
+        type: 'success' 
+      });
+    } catch (error) {
+      setSnackbar({ isOpen: true, message: 'Error al marcar la tarea para revisión', type: 'error' });
+      throw error;
+    }
+  };
+
+  const handleReturnTask = (task: Task) => {
+    setTaskForReturn(task);
+    setIsTaskReturnModalOpen(true);
+  };
+
+  const handleReturnSubmit = async (comment?: string) => {
+    if (!taskForReturn) return;
+    
+    try {
+      console.log('🔄 Devolviendo tarea para correcciones:', taskForReturn.id);
+      
+      // Verificar si la tarea tiene archivos para eliminar
+      const hasFiles = taskForReturn.completedFiles && taskForReturn.completedFiles.length > 0;
+      
+      if (hasFiles) {
+        console.log('🗑️ Eliminando archivos de tarea devuelta para correcciones:', taskForReturn.id);
+        await deleteFilesByTask(taskForReturn.id);
+      }
+      
+      // Actualizar el estado de la tarea y limpiar archivos
+      await updateTask(taskForReturn.id, { 
+        status: 'corrections' as const,
+        completed_files: null,
+        review_notes: null
+      } as any);
+      
+      // Si hay comentario, agregarlo a los comentarios de la tarea
+      if (comment && comment.trim()) {
+        const authorId = supabaseProfiles.find(p => p.user_id === user?.id)?.id || 'anonymous-profile-id';
+        await addComment(taskForReturn.id, authorId, `🔄 **Tarea devuelta para correcciones**\n\n${comment.trim()}`);
+      }
+      
+      setSnackbar({
+        isOpen: true,
+        message: comment && comment.trim() 
+          ? 'Tarea devuelta a In Progress con observaciones'
+          : 'Tarea devuelta a In Progress exitosamente',
+        type: 'success'
+      });
+      
+      // Cerrar modal y limpiar estado
+      setIsTaskReturnModalOpen(false);
+      setTaskForReturn(null);
+    } catch (error) {
+      console.error('❌ Error al devolver tarea:', error);
+      setSnackbar({ isOpen: true, message: 'Error al devolver la tarea', type: 'error' });
+      throw error;
+    }
+  };
+
   const handleStatusChange = async (taskId: string, newStatus: TaskStatus) => {
     try {
       console.log('🔄 Cambiando estado de tarea:', taskId, 'a', newStatus);
       
-      await updateTask(taskId, { status: newStatus });
+      // Obtener la tarea actual para verificar si tiene archivos
+      const currentTask = tasks.find(t => t.id === taskId);
+      const hasFiles = currentTask?.completedFiles && currentTask.completedFiles.length > 0;
+      
+      // Si la tarea está pasando de "review" a "corrections" (devuelta para correcciones) y tiene archivos, eliminarlos
+      if (currentTask?.status === 'review' && newStatus === 'corrections' && hasFiles) {
+        console.log('🗑️ Eliminando archivos de tarea devuelta para correcciones:', taskId);
+        await deleteFilesByTask(taskId);
+        
+        // Actualizar la tarea para limpiar los archivos
+        await updateTask(taskId, { 
+          status: newStatus,
+          completed_files: null,
+          review_notes: null
+        } as any);
+      } else {
+        // Actualización normal sin eliminar archivos
+        await updateTask(taskId, { status: newStatus });
+      }
       
       // Mostrar snackbar con el nuevo estado
       const statusMessages = {
         'todo': 'Tarea marcada como pendiente',
         'in-progress': 'Tarea marcada como en progreso',
+        'corrections': 'Tarea marcada para correcciones',
         'review': 'Tarea marcada para revisión',
         'done': 'Tarea marcada como completada'
       };
@@ -566,7 +680,7 @@ function App() {
           project_lead_id: projectData.projectLead?.id || null,
           objective: projectData.objective,
           scope: projectData.scope,
-          final_due_date: projectData.finalDueDate?.toISOString().split('T')[0],
+          final_due_date: formatDateForSupabase(projectData.finalDueDate),
           service_cycle: projectData.serviceCycle,
           reporting_day: projectData.reportingDay,
           monthly_deliverables: projectData.monthlyDeliverables,
@@ -585,7 +699,7 @@ function App() {
           project_lead_id: projectData.projectLead?.id || null,
           objective: projectData.objective,
           scope: projectData.scope,
-          final_due_date: projectData.finalDueDate?.toISOString().split('T')[0],
+          final_due_date: formatDateForSupabase(projectData.finalDueDate),
           service_cycle: projectData.serviceCycle,
           reporting_day: projectData.reportingDay,
           monthly_deliverables: projectData.monthlyDeliverables,
@@ -603,7 +717,7 @@ function App() {
           project_lead_id: projectData.projectLead?.id || null,
           objective: projectData.objective,
           scope: projectData.scope,
-          final_due_date: projectData.finalDueDate?.toISOString().split('T')[0],
+          final_due_date: formatDateForSupabase(projectData.finalDueDate),
           service_cycle: projectData.serviceCycle,
           reporting_day: projectData.reportingDay,
           monthly_deliverables: projectData.monthlyDeliverables,
@@ -847,6 +961,8 @@ function App() {
             onStatusChange={handleStatusChange}
             onTaskClick={handleViewTask}
             onCreateTask={handleCreateTask}
+            onMarkForReview={handleMarkForReview}
+            onReturnTask={handleReturnTask}
           />
         );
     }
@@ -983,7 +1099,9 @@ function App() {
           users={selectableUsers}
           onChangeAssignee={handleChangeAssignee}
           authorProfileId={supabaseProfiles.find(p => p.user_id === user?.id)?.id}
-        />
+                      onMarkForReview={handleMarkForReview}
+            onReturnTask={handleReturnTask}
+          />
       )}
 
       {/* Settings Modal */}
@@ -999,6 +1117,32 @@ function App() {
         isOpen={showNotificationsModal}
         onClose={handleCloseNotifications}
       />
+
+              {/* Task Review Modal */}
+        {taskForReview && (
+          <TaskReviewModal
+            isOpen={isTaskReviewModalOpen}
+            onClose={() => {
+              setIsTaskReviewModalOpen(false);
+              setTaskForReview(null);
+            }}
+            task={taskForReview}
+            onMarkForReview={handleReviewSubmit}
+          />
+        )}
+
+        {/* Task Return Modal */}
+        {taskForReturn && (
+          <TaskReturnModal
+            isOpen={isTaskReturnModalOpen}
+            onClose={() => {
+              setIsTaskReturnModalOpen(false);
+              setTaskForReturn(null);
+            }}
+            taskTitle={taskForReturn.title}
+            onConfirm={handleReturnSubmit}
+          />
+        )}
 
       {/* Snackbar */}
       <Snackbar

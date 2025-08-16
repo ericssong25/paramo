@@ -1,6 +1,7 @@
 import React from 'react'
 import { Task } from '../types'
 import { Flag } from 'lucide-react'
+import { formatDateForDisplay } from '../utils/dateUtils'
 
 interface TaskListProps {
   tasks: Task[]
@@ -73,7 +74,7 @@ const TaskList: React.FC<TaskListProps> = ({ tasks, onTaskClick }) => {
               {task.assignee ? task.assignee.name : '-'}
             </div>
             <div className="col-span-2 text-sm text-gray-600">
-              {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : '-'}
+              {task.dueDate ? formatDateForDisplay(task.dueDate) : '-'}
             </div>
             <div className="col-span-2">
               <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium capitalize ${statusBadge[task.status]}`}>

@@ -1,5 +1,9 @@
 import { User, Project, Task, ContentItem, TaskComment } from '../types';
 import { SupabaseProfile, SupabaseProject, SupabaseTask, SupabaseContentItem, SupabaseTaskComment } from '../types';
+import { parseSupabaseDate, formatDateForSupabase } from './dateUtils';
+
+// Re-exportar las funciones de fecha para mantener compatibilidad
+export { formatDateForSupabase } from './dateUtils';
 
 // Convertir perfil de Supabase a User
 export const convertSupabaseProfileToUser = (profile: SupabaseProfile | undefined): User | undefined => {
@@ -32,7 +36,7 @@ export const convertSupabaseProjectToProject = (project: SupabaseProject): Proje
   objective: project.objective || '',
   scope: project.scope || [],
   milestones: [], // TODO: Implementar milestones
-  finalDueDate: project.final_due_date ? new Date(project.final_due_date) : undefined,
+  finalDueDate: parseSupabaseDate(project.final_due_date),
   serviceCycle: project.service_cycle || undefined,
   reportingDay: project.reporting_day || 0,
   monthlyDeliverables: project.monthly_deliverables || [],
@@ -40,29 +44,36 @@ export const convertSupabaseProjectToProject = (project: SupabaseProject): Proje
 });
 
 // Convertir tarea de Supabase a Task
-export const convertSupabaseTaskToTask = (task: SupabaseTask, profiles: SupabaseProfile[]): Task => ({
-  id: task.id,
-  title: task.title,
-  description: task.description || '',
-  status: task.status,
-  priority: task.priority,
-  assignee: task.assignee_id 
-    ? convertSupabaseProfileToUser(profiles.find(p => p.id === task.assignee_id))
-    : undefined,
-  dueDate: task.due_date ? new Date(task.due_date) : undefined,
-  createdAt: new Date(task.created_at),
-  updatedAt: new Date(task.updated_at),
-  projectId: task.project_id,
-  timeTracked: task.time_tracked,
-  tags: task.tags || [],
-  subtasks: task.task_subtasks?.map(subtask => ({
-    id: subtask.id,
-    title: subtask.title,
-    completed: subtask.completed,
-    createdAt: new Date(subtask.created_at),
-    position: subtask.position ?? undefined,
-  })) || [],
-});
+export const convertSupabaseTaskToTask = (task: SupabaseTask, profiles: SupabaseProfile[]): Task => {
+  const convertedTask = {
+    id: task.id,
+    title: task.title,
+    description: task.description || '',
+    status: task.status,
+    priority: task.priority,
+    assignee: task.assignee_id 
+      ? convertSupabaseProfileToUser(profiles.find(p => p.id === task.assignee_id))
+      : undefined,
+    dueDate: parseSupabaseDate(task.due_date),
+    createdAt: new Date(task.created_at),
+    updatedAt: new Date(task.updated_at),
+    projectId: task.project_id,
+    timeTracked: task.time_tracked,
+    tags: task.tags || [],
+    subtasks: task.task_subtasks?.map(subtask => ({
+      id: subtask.id,
+      title: subtask.title,
+      completed: subtask.completed,
+      createdAt: new Date(subtask.created_at),
+      position: subtask.position ?? undefined,
+    })) || [],
+    completedFiles: task.completed_files || [],
+    reviewDate: task.review_date ? new Date(task.review_date) : undefined,
+    reviewNotes: task.review_notes || undefined,
+  };
+  
+  return convertedTask;
+};
 
 // Convertir contenido de Supabase a ContentItem
 export const convertSupabaseContentItemToContentItem = (

@@ -4,6 +4,11 @@ import { Database } from '../lib/supabase'
 import { useSupabaseError } from './useSupabaseError'
 import { SupabaseTask } from '../types'
 
+// Hook principal para acceder a la instancia de Supabase
+export const useSupabase = () => {
+  return { supabase }
+}
+
 // Tipos extraídos de la base de datos
 type Profile = Database['public']['Tables']['profiles']['Row']
 type Project = Database['public']['Tables']['projects']['Row']
@@ -218,6 +223,9 @@ export const useTasks = () => {
 
   const updateTask = async (id: string, updates: Database['public']['Tables']['tasks']['Update']) => {
     try {
+      console.log('🔄 useSupabase: Actualizando tarea:', id);
+      console.log('📋 Datos a actualizar:', updates);
+      
       clearError()
       const { data, error: supabaseError } = await supabase
         .from('tasks')
@@ -229,18 +237,25 @@ export const useTasks = () => {
             id,
             title,
             completed,
-            created_at
+            created_at,
+            position
           )
         `)
         .single()
 
       if (supabaseError) {
+        console.error('❌ useSupabase: Error de Supabase:', supabaseError);
         handleError(supabaseError)
         throw supabaseError
       }
+      
+      console.log('✅ useSupabase: Tarea actualizada exitosamente');
+      console.log('📋 Datos devueltos por Supabase:', data);
+      
       setTasks(prev => prev.map(t => t.id === id ? (data as unknown as SupabaseTask) : t))
       return data
     } catch (err) {
+      console.error('❌ useSupabase: Error general:', err);
       handleError(err)
       throw err
     }

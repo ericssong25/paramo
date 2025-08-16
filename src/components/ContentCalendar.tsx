@@ -15,7 +15,10 @@ import {
   CheckCircle,
   CheckCircle2,
   XCircle,
-  ExternalLink
+  ExternalLink,
+  Filter,
+  Image,
+  CheckSquare
 } from 'lucide-react';
 import { ContentItem, Task } from '../types';
 import DayViewModal from './DayViewModal';
@@ -39,6 +42,7 @@ const ContentCalendar: React.FC<ContentCalendarProps> = ({
 }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<'month' | 'week' | 'list'>('month');
+  const [filterMode, setFilterMode] = useState<'all' | 'content' | 'tasks'>('all');
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
   const [isDayViewOpen, setIsDayViewOpen] = useState(false);
 
@@ -110,7 +114,7 @@ const ContentCalendar: React.FC<ContentCalendarProps> = ({
   };
 
   const getContentForDate = (date: Date | null) => {
-    if (!date) return [];
+    if (!date || filterMode === 'tasks') return [];
     
     return contentItems.filter(item => {
       const itemDate = item.scheduledDate || item.publishedDate;
@@ -125,7 +129,7 @@ const ContentCalendar: React.FC<ContentCalendarProps> = ({
   };
 
   const getTasksForDate = (date: Date | null) => {
-    if (!date) return [];
+    if (!date || filterMode === 'content') return [];
     
     return tasks.filter(task => {
       if (!task.dueDate) return false;
@@ -186,6 +190,21 @@ const ContentCalendar: React.FC<ContentCalendarProps> = ({
 
   const days = viewMode === 'month' ? getDaysInMonth(currentDate) : getDaysInWeek(currentDate);
   
+  // Calculate totals for the current view
+  const getTotalItems = () => {
+    let totalContent = 0;
+    let totalTasks = 0;
+    
+    days.forEach(day => {
+      if (day) {
+        totalContent += getContentForDate(day).length;
+        totalTasks += getTasksForDate(day).length;
+      }
+    });
+    
+    return { totalContent, totalTasks };
+  };
+  
   const getDisplayText = () => {
     if (viewMode === 'month') {
       return currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
@@ -208,7 +227,41 @@ const ContentCalendar: React.FC<ContentCalendarProps> = ({
       <div className="p-6 border-b border-gray-200">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <h2 className="text-xl font-semibold text-gray-900">Content Calendar</h2>
+            <div className="flex items-center space-x-2">
+              <h2 className="text-xl font-semibold text-gray-900">Content Calendar</h2>
+              {filterMode !== 'all' && (
+                <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                  filterMode === 'content' 
+                    ? 'bg-purple-100 text-purple-700' 
+                    : 'bg-orange-100 text-orange-700'
+                }`}>
+                  {filterMode === 'content' ? 'Content Only' : 'Tasks Only'}
+                </span>
+              )}
+              {(() => {
+                const { totalContent, totalTasks } = getTotalItems();
+                if (filterMode === 'all' && (totalContent > 0 || totalTasks > 0)) {
+                  return (
+                    <span className="text-sm text-gray-500">
+                      ({totalContent} content, {totalTasks} tasks)
+                    </span>
+                  );
+                } else if (filterMode === 'content' && totalContent > 0) {
+                  return (
+                    <span className="text-sm text-purple-600">
+                      ({totalContent} items)
+                    </span>
+                  );
+                } else if (filterMode === 'tasks' && totalTasks > 0) {
+                  return (
+                    <span className="text-sm text-orange-600">
+                      ({totalTasks} items)
+                    </span>
+                  );
+                }
+                return null;
+              })()}
+            </div>
             <div className="flex items-center space-x-2">
               <button
                 onClick={() => setViewMode('month')}
@@ -239,6 +292,44 @@ const ContentCalendar: React.FC<ContentCalendarProps> = ({
                 }`}
               >
                 List
+              </button>
+            </div>
+            
+            {/* Filter Buttons */}
+            <div className="flex items-center space-x-2 ml-4">
+              <Filter className="w-4 h-4 text-gray-500" />
+              <button
+                onClick={() => setFilterMode('all')}
+                className={`px-3 py-1 text-sm rounded-lg transition-colors flex items-center space-x-1 ${
+                  filterMode === 'all' 
+                    ? 'bg-green-100 text-green-700' 
+                    : 'text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                <Calendar className="w-3 h-3" />
+                <span>All</span>
+              </button>
+              <button
+                onClick={() => setFilterMode('content')}
+                className={`px-3 py-1 text-sm rounded-lg transition-colors flex items-center space-x-1 ${
+                  filterMode === 'content' 
+                    ? 'bg-purple-100 text-purple-700' 
+                    : 'text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                <Image className="w-3 h-3" />
+                <span>Content</span>
+              </button>
+              <button
+                onClick={() => setFilterMode('tasks')}
+                className={`px-3 py-1 text-sm rounded-lg transition-colors flex items-center space-x-1 ${
+                  filterMode === 'tasks' 
+                    ? 'bg-orange-100 text-orange-700' 
+                    : 'text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                <CheckSquare className="w-3 h-3" />
+                <span>Tasks</span>
               </button>
             </div>
           </div>

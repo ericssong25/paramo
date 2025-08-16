@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Subscription, SupabaseSubscription } from '../types';
+import { formatDateForSupabase } from '../utils/dateUtils';
 
 // Convertir datos de Supabase a tipo Subscription
 const convertSupabaseSubscriptionToSubscription = (supabaseSubscription: SupabaseSubscription): Subscription => {
@@ -10,8 +11,8 @@ const convertSupabaseSubscriptionToSubscription = (supabaseSubscription: Supabas
     subscriptionType: supabaseSubscription.subscription_type,
     currency: supabaseSubscription.currency,
     status: supabaseSubscription.status,
-    lastRenewalDate: new Date(supabaseSubscription.last_renewal_date),
-    nextDueDate: new Date(supabaseSubscription.next_due_date),
+    lastRenewalDate: new Date(supabaseSubscription.last_renewal_date + 'T00:00:00'),
+    nextDueDate: new Date(supabaseSubscription.next_due_date + 'T00:00:00'),
     paymentMethod: supabaseSubscription.payment_method,
     responsible: {
       id: supabaseSubscription.responsible_id || '',
@@ -79,8 +80,8 @@ export const useSubscriptions = () => {
           subscription_type: subscriptionData.subscriptionType,
           currency: subscriptionData.currency,
           status: subscriptionData.status,
-          last_renewal_date: subscriptionData.lastRenewalDate.toISOString().split('T')[0],
-          next_due_date: subscriptionData.nextDueDate.toISOString().split('T')[0],
+          last_renewal_date: formatDateForSupabase(subscriptionData.lastRenewalDate),
+          next_due_date: formatDateForSupabase(subscriptionData.nextDueDate),
           payment_method: subscriptionData.paymentMethod,
           responsible_id: subscriptionData.responsible.id,
           notes: subscriptionData.notes,
@@ -122,8 +123,8 @@ export const useSubscriptions = () => {
       if (updates.subscriptionType !== undefined) updateData.subscription_type = updates.subscriptionType;
       if (updates.currency !== undefined) updateData.currency = updates.currency;
       if (updates.status !== undefined) updateData.status = updates.status;
-      if (updates.lastRenewalDate !== undefined) updateData.last_renewal_date = updates.lastRenewalDate.toISOString().split('T')[0];
-      if (updates.nextDueDate !== undefined) updateData.next_due_date = updates.nextDueDate.toISOString().split('T')[0];
+              if (updates.lastRenewalDate !== undefined) updateData.last_renewal_date = formatDateForSupabase(updates.lastRenewalDate);
+      if (updates.nextDueDate !== undefined) updateData.next_due_date = formatDateForSupabase(updates.nextDueDate);
       if (updates.paymentMethod !== undefined) updateData.payment_method = updates.paymentMethod;
       if (updates.responsible !== undefined) updateData.responsible_id = updates.responsible.id;
       if (updates.notes !== undefined) updateData.notes = updates.notes;

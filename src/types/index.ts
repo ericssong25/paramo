@@ -49,8 +49,19 @@ export interface Milestone {
   description?: string;
 }
 
-export type TaskStatus = 'todo' | 'in-progress' | 'review' | 'done';
+export type TaskStatus = 'todo' | 'in-progress' | 'corrections' | 'review' | 'done';
 export type TaskPriority = 'low' | 'normal' | 'high' | 'urgent';
+
+export interface TaskFile {
+  name: string;
+  url: string;
+  size: number;
+  type: string;
+  uploaded_at: string;
+  uploaded_by: string;
+  path?: string; // Ruta del archivo en Supabase Storage
+  file?: File; // Referencia al archivo original (para archivos locales)
+}
 
 export interface Task {
   id: string;
@@ -66,6 +77,9 @@ export interface Task {
   timeTracked: number; // in minutes
   tags: any[]; // JSONB en Supabase
   subtasks: Subtask[];
+  completedFiles?: TaskFile[];
+  reviewDate?: Date;
+  reviewNotes?: string;
 }
 
 export interface Subtask {
@@ -229,13 +243,16 @@ export interface SupabaseTask {
   id: string;
   title: string;
   description: string | null;
-  status: 'todo' | 'in-progress' | 'review' | 'done';
+  status: 'todo' | 'in-progress' | 'corrections' | 'review' | 'done';
   priority: 'low' | 'normal' | 'high' | 'urgent';
   assignee_id: string | null;
   due_date: string | null;
   project_id: string;
   time_tracked: number;
   tags: any | null;
+  completed_files: any | null;
+  review_date: string | null;
+  review_notes: string | null;
   created_at: string;
   updated_at: string;
   task_subtasks?: {

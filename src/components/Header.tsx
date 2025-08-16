@@ -188,7 +188,7 @@ const Header: React.FC<HeaderProps> = ({
     return base.includes(val) ? base.filter(v => v !== val) : [...base, val]
   }
 
-  const statusOptions: TaskStatus[] = ['todo','in-progress','review','done']
+  const statusOptions: TaskStatus[] = ['todo','in-progress','corrections','review','done']
   const priorityOptions: TaskPriority[] = ['low','normal','high','urgent']
 
   const statusClass = (s: TaskStatus, active: boolean) => {
@@ -196,6 +196,7 @@ const Header: React.FC<HeaderProps> = ({
     const map: Record<TaskStatus, string> = {
       'todo': active ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-gray-50 border-gray-200 text-gray-700',
       'in-progress': active ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-gray-50 border-gray-200 text-gray-700',
+      'corrections': active ? 'bg-orange-50 border-orange-200 text-orange-700' : 'bg-gray-50 border-gray-200 text-gray-700',
       'review': active ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-gray-50 border-gray-200 text-gray-700',
       'done': active ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-gray-50 border-gray-200 text-gray-700',
     }
@@ -399,7 +400,7 @@ const Header: React.FC<HeaderProps> = ({
                           onClick={() => handleToggleStatus(s)}
                           className={statusClass(s, isActive(filter.status as any, s))}
                         >
-                          {s.replace('-', ' ')}
+                          {s === 'corrections' ? 'Correcciones' : s.replace('-', ' ')}
                         </button>
                       ))}
                     </div>

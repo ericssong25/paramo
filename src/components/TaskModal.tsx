@@ -5,13 +5,12 @@ import {
   Calendar, 
   Flag, 
   User, 
-  Clock, 
   Plus,
-  Check,
   Trash2,
   Tag
 } from 'lucide-react';
-import { Task, TaskPriority, TaskStatus, User as UserType, Subtask } from '../types';
+import { Task, TaskPriority, TaskStatus, User as UserType } from '../types';
+import { formatDateForSupabase, parseSupabaseDate } from '../utils/dateUtils';
 
 interface TaskModalProps {
   task?: Task;
@@ -53,7 +52,7 @@ const TaskModal: React.FC<TaskModalProps> = ({
         priority: task.priority,
         status: task.status,
         assigneeId: task.assignee?.id || '',
-        dueDate: task.dueDate ? task.dueDate.toISOString().split('T')[0] : '',
+        dueDate: task.dueDate ? formatDateForSupabase(task.dueDate) || '' : '',
         tags: [...task.tags],
       });
     } else {
@@ -72,8 +71,10 @@ const TaskModal: React.FC<TaskModalProps> = ({
     setNewTag('');
   }, [task, isOpen]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    console.log('🔄 TaskModal: Enviando formulario con fecha:', formData.dueDate);
     
     const taskData: Partial<Task> = {
       title: formData.title,
@@ -81,11 +82,13 @@ const TaskModal: React.FC<TaskModalProps> = ({
       priority: formData.priority,
       status: formData.status,
       assignee: formData.assigneeId ? users.find(u => u.id === formData.assigneeId) : undefined,
-      dueDate: formData.dueDate ? new Date(formData.dueDate) : undefined,
+      dueDate: formData.dueDate ? parseSupabaseDate(formData.dueDate) : undefined,
       tags: formData.tags,
       projectId,
     };
 
+    console.log('📤 TaskModal: Enviando datos a App.tsx:', taskData);
+    console.log('📅 TaskModal: dueDate convertido a Date:', taskData.dueDate);
     onSave(taskData);
     onClose();
   };
@@ -308,7 +311,10 @@ const TaskModal: React.FC<TaskModalProps> = ({
                   <input
                     type="date"
                     value={formData.dueDate}
-                    onChange={(e) => setFormData(prev => ({ ...prev, dueDate: e.target.value }))}
+                    onChange={(e) => {
+                      console.log('🔄 TaskModal: Cambiando dueDate a:', e.target.value);
+                      setFormData(prev => ({ ...prev, dueDate: e.target.value }));
+                    }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
@@ -366,12 +372,12 @@ const TaskModal: React.FC<TaskModalProps> = ({
               >
                 Cancel
               </button>
-              <button
-                type="submit"
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                {task ? 'Update Task' : 'Create Task'}
-              </button>
+                              <button
+                  type="submit"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  {task ? 'Update Task' : 'Create Task'}
+                </button>
             </div>
           </form>
         </div>

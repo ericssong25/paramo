@@ -11,6 +11,7 @@ import {
   Trash2
 } from 'lucide-react';
 import { Project, ProjectType, ProjectStatus, User as UserType, Milestone } from '../types';
+import { formatDateForSupabase } from '../utils/dateUtils';
 
 interface ProjectModalProps {
   isOpen: boolean;
@@ -37,7 +38,7 @@ const ProjectModal: React.FC<ProjectModalProps> = ({
     projectLeadId: project?.projectLead?.id || '',
     objective: project?.objective || '',
     scope: project?.scope || [''],
-    finalDueDate: project?.finalDueDate ? project.finalDueDate.toISOString().split('T')[0] : '',
+    finalDueDate: project?.finalDueDate ? formatDateForSupabase(project.finalDueDate) : '',
     serviceCycle: project?.serviceCycle || 'monthly',
     reportingDay: project?.reportingDay || 1,
     monthlyDeliverables: project?.monthlyDeliverables || [''],

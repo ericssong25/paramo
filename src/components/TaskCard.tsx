@@ -7,22 +7,34 @@ import {
   Circle,
   Calendar,
   AlertTriangle,
-  Flag
+  Flag,
+  Play,
+  Eye,
+  Check
 } from 'lucide-react';
 import { Task, TaskPriority, TaskStatus } from '../types';
+import { isDateOverdue } from '../utils/dateUtils';
 
 interface TaskCardProps {
   task: Task;
   onStatusChange: (taskId: string, newStatus: TaskStatus) => void;
   onTaskClick: (task: Task) => void;
+  onMarkForReview?: (task: Task) => void;
+  onReturnTask?: (task: Task) => void;
   isDragging?: boolean;
+  onDragStart?: (e: React.DragEvent) => void;
+  onDragEnd?: () => void;
 }
 
 const TaskCard: React.FC<TaskCardProps> = ({ 
   task, 
   onStatusChange, 
   onTaskClick,
-  isDragging = false 
+  onMarkForReview,
+  onReturnTask,
+  isDragging = false,
+  onDragStart,
+  onDragEnd
 }) => {
   const getPriorityColor = (priority: TaskPriority) => {
     switch (priority) {
@@ -40,7 +52,29 @@ const TaskCard: React.FC<TaskCardProps> = ({
     }
   };
 
-  const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'done';
+  const getStatusColor = (status: TaskStatus) => {
+    switch (status) {
+      case 'done': return 'bg-green-100 text-green-700 border-green-200';
+      case 'in-progress': return 'bg-blue-100 text-blue-700 border-blue-200';
+      case 'corrections': return 'bg-orange-100 text-orange-700 border-orange-200';
+      case 'review': return 'bg-yellow-100 text-yellow-700 border-yellow-200';
+      case 'todo': return 'bg-gray-100 text-gray-700 border-gray-200';
+      default: return 'bg-gray-100 text-gray-700 border-gray-200';
+    }
+  };
+
+  const getStatusIcon = (status: TaskStatus) => {
+    switch (status) {
+      case 'done': return <CheckCircle2 className="w-3 h-3" />;
+      case 'in-progress': return <Play className="w-3 h-3" />;
+      case 'corrections': return <AlertTriangle className="w-3 h-3" />;
+      case 'review': return <Eye className="w-3 h-3" />;
+      case 'todo': return <Circle className="w-3 h-3" />;
+      default: return <Circle className="w-3 h-3" />;
+    }
+  };
+
+  const isOverdue = isDateOverdue(task.dueDate) && task.status !== 'done';
   const completedSubtasks = task.subtasks.filter(st => st.completed).length;
 
   const formatDueDate = (date: Date) => {
@@ -69,16 +103,30 @@ const TaskCard: React.FC<TaskCardProps> = ({
       } ${isOverdue ? 'border-red-200 bg-red-50/30' : ''}`}
       onClick={() => onTaskClick(task)}
       draggable
-      onDragStart={(e) => {
+      onDragStart={onDragStart || ((e) => {
         e.dataTransfer.setData('text/plain', task.id);
         e.dataTransfer.effectAllowed = 'move';
-      }}
+      })}
+      onDragEnd={onDragEnd}
     >
-      {/* Priority and Status */}
+      {/* Priority, Status and Assignee */}
       <div className="flex items-center justify-between mb-2">
-        <div className={`inline-flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(task.priority)}`}>
-          {getPriorityIcon(task.priority)}
-          <span className="capitalize">{task.priority}</span>
+        <div className="flex items-center space-x-2">
+          <div className={`inline-flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(task.priority)}`}>
+            {getPriorityIcon(task.priority)}
+            <span className="capitalize">{task.priority}</span>
+          </div>
+          
+          {/* Status indicator */}
+          <div className={`inline-flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(task.status)}`}>
+            {getStatusIcon(task.status)}
+            <span className="capitalize">
+              {task.status === 'corrections' ? 'Correcciones' : 
+               task.status === 'in-progress' ? 'En progreso' :
+               task.status === 'review' ? 'En revisión' :
+               task.status}
+            </span>
+          </div>
         </div>
         
         {task.assignee && (
@@ -163,6 +211,74 @@ const TaskCard: React.FC<TaskCardProps> = ({
             <div className="flex items-center space-x-1">
               <CheckCircle2 className="w-3 h-3" />
               <span>{task.subtasks.length}</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Action Buttons Section */}
+      <div className="mt-3 pt-3 border-t border-gray-100">
+        <div className="flex flex-wrap gap-1">
+          {task.status === 'todo' && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onStatusChange(task.id, 'in-progress');
+              }}
+              className="flex items-center space-x-1 px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
+            >
+              <Play className="w-3 h-3" />
+              <span>Iniciar</span>
+            </button>
+          )}
+
+          {(task.status === 'in-progress' || task.status === 'corrections') && onMarkForReview && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onMarkForReview(task);
+              }}
+              className="flex items-center space-x-1 px-2 py-1 text-xs bg-yellow-100 text-yellow-700 rounded hover:bg-yellow-200 transition-colors"
+            >
+              <Eye className="w-3 h-3" />
+              <span>Revisar</span>
+            </button>
+          )}
+
+          {task.status === 'review' && (
+            <>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (onReturnTask) {
+                    onReturnTask(task);
+                  } else {
+                    onStatusChange(task.id, 'in-progress');
+                  }
+                }}
+                className="flex items-center space-x-1 px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
+              >
+                <Play className="w-3 h-3" />
+                <span>Devolver</span>
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onStatusChange(task.id, 'done');
+                }}
+                className="flex items-center space-x-1 px-2 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200 transition-colors"
+              >
+                <Check className="w-3 h-3" />
+                <span>Completar</span>
+              </button>
+            </>
+          )}
+
+          {/* Show files indicator if task has completed files */}
+          {task.completedFiles && task.completedFiles.length > 0 && (
+            <div className="flex items-center space-x-1 px-2 py-1 text-xs bg-purple-100 text-purple-700 rounded">
+              <Paperclip className="w-3 h-3" />
+              <span>{task.completedFiles.length}</span>
             </div>
           )}
         </div>

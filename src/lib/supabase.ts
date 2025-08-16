@@ -137,7 +137,7 @@ export interface Database {
           id: string
           title: string
           description: string | null
-          status: 'todo' | 'in-progress' | 'review' | 'done'
+          status: 'todo' | 'in-progress' | 'corrections' | 'review' | 'done'
           priority: 'low' | 'normal' | 'high' | 'urgent'
           assignee_id: string | null
           due_date: string | null
@@ -151,7 +151,7 @@ export interface Database {
           id?: string
           title: string
           description?: string | null
-          status?: 'todo' | 'in-progress' | 'review' | 'done'
+          status?: 'todo' | 'in-progress' | 'corrections' | 'review' | 'done'
           priority?: 'low' | 'normal' | 'high' | 'urgent'
           assignee_id?: string | null
           due_date?: string | null
@@ -165,7 +165,7 @@ export interface Database {
           id?: string
           title?: string
           description?: string | null
-          status?: 'todo' | 'in-progress' | 'review' | 'done'
+          status?: 'todo' | 'in-progress' | 'corrections' | 'review' | 'done'
           priority?: 'low' | 'normal' | 'high' | 'urgent'
           assignee_id?: string | null
           due_date?: string | null

@@ -16,7 +16,13 @@ import {
   ArrowLeft,
   Timer,
   GripVertical,
-  CheckCircle
+  CheckCircle,
+  File,
+  Image,
+  Video,
+  FileText,
+  ExternalLink,
+  Download
 } from 'lucide-react';
 import DeleteConfirmationModal from './DeleteConfirmationModal';
 import { Task, TaskPriority, TaskStatus, User as UserType, Subtask } from '../types';
@@ -43,6 +49,7 @@ import { useComments } from '../hooks/useSupabase';
 import { formatRelativeTime } from '../utils/typeConverters';
 import { Trash2 as TrashIcon, Edit as EditIcon, X as CloseIcon } from 'lucide-react';
 import { useProfiles } from '../hooks/useSupabase';
+import { useStorage } from '../hooks/useStorage';
 
 // Componente para subtarea arrastrable
 interface SortableSubtaskItemProps {
@@ -127,6 +134,8 @@ interface TaskViewProps {
   users: UserType[];
   authorProfileId?: string;
   onChangeAssignee?: (taskId: string, assigneeId: string | null) => void;
+  onMarkForReview?: (task: Task) => void;
+  onReturnTask?: (task: Task) => void;
 }
 
 const TaskView: React.FC<TaskViewProps> = ({
@@ -143,6 +152,8 @@ const TaskView: React.FC<TaskViewProps> = ({
   users,
   authorProfileId,
   onChangeAssignee,
+  onMarkForReview,
+  onReturnTask,
 }) => {
   const [newSubtask, setNewSubtask] = useState('');
   const [localSubtaskIds, setLocalSubtaskIds] = useState<string[]>(task.subtasks.map(s => s.id));
@@ -201,6 +212,8 @@ const TaskView: React.FC<TaskViewProps> = ({
     setShowDeleteConfirmation(true);
   };
 
+  const { downloadFile: downloadFileFromStorage, getFileUrl } = useStorage();
+
   const handleDeleteConfirm = () => {
     if (onDelete) {
       onDelete(task.id);
@@ -224,6 +237,7 @@ const TaskView: React.FC<TaskViewProps> = ({
     switch (status) {
       case 'done': return 'bg-green-100 text-green-700 border-green-200';
       case 'in-progress': return 'bg-blue-100 text-blue-700 border-blue-200';
+      case 'corrections': return 'bg-orange-100 text-orange-700 border-orange-200';
       case 'review': return 'bg-yellow-100 text-yellow-700 border-yellow-200';
       case 'todo': return 'bg-gray-100 text-gray-700 border-gray-200';
       default: return 'bg-gray-100 text-gray-700 border-gray-200';
@@ -234,9 +248,46 @@ const TaskView: React.FC<TaskViewProps> = ({
     switch (status) {
       case 'done': return <CheckCircle className="w-4 h-4" />;
       case 'in-progress': return <Play className="w-4 h-4" />;
+      case 'corrections': return <AlertCircle className="w-4 h-4" />;
       case 'review': return <AlertCircle className="w-4 h-4" />;
       case 'todo': return <Circle className="w-4 h-4" />;
-      default: return <Circle className="w-4 h-4" />;
+    }
+  };
+
+  const downloadFile = async (file: any) => {
+    try {
+      // Si el archivo tiene path (está en Supabase Storage), usar la función de descarga
+      if (file.path) {
+        const success = await downloadFileFromStorage(file.path, file.name);
+        if (!success) {
+          console.error('Error al descargar el archivo desde Storage');
+        }
+      } else {
+        // Para archivos locales, usar el método anterior
+        const link = document.createElement('a');
+        link.href = file.url;
+        link.download = file.name;
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    } catch (err) {
+      console.error('Error al descargar el archivo:', err);
+    }
+  };
+
+  const downloadAllFiles = async () => {
+    if (!task.completedFiles || task.completedFiles.length === 0) return;
+    
+    try {
+      for (const file of task.completedFiles) {
+        await downloadFile(file);
+        // Pequeña pausa entre descargas para evitar problemas del navegador
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    } catch (err) {
+      console.error('Error al descargar todos los archivos:', err);
     }
   };
 
@@ -244,6 +295,14 @@ const TaskView: React.FC<TaskViewProps> = ({
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
     return `${hours}h ${mins}m`;
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
   const completedSubtasks = task.subtasks.filter(st => st.completed).length;
@@ -292,10 +351,12 @@ const TaskView: React.FC<TaskViewProps> = ({
           <div className="flex-1 p-6 overflow-y-auto">
             {/* Status and Priority */}
             <div className="flex items-center space-x-4 mb-6">
-              <div className={`inline-flex items-center space-x-2 px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(task.status)}`}>
-                {getStatusIcon(task.status)}
-                <span className="capitalize">{task.status.replace('-', ' ')}</span>
-              </div>
+                             <div className={`inline-flex items-center space-x-2 px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(task.status)}`}>
+                 {getStatusIcon(task.status)}
+                 <span className="capitalize">
+                   {task.status === 'corrections' ? 'Correcciones' : task.status.replace('-', ' ')}
+                 </span>
+               </div>
               
               <div className={`inline-flex items-center space-x-2 px-3 py-1 rounded-full text-sm font-medium border ${getPriorityColor(task.priority)}`}>
                 <Flag className="w-4 h-4" />
@@ -310,6 +371,70 @@ const TaskView: React.FC<TaskViewProps> = ({
                 {task.description || 'No description provided'}
               </p>
             </div>
+
+            {/* Completed Files */}
+            {task.completedFiles && task.completedFiles.length > 0 && (
+              <div className="mb-6">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-lg font-medium text-gray-900">Archivos completados</h3>
+                  {task.completedFiles.length > 1 && (
+                    <button
+                      onClick={downloadAllFiles}
+                      className="flex items-center space-x-2 px-3 py-1 text-sm font-medium text-green-700 bg-green-100 rounded-lg hover:bg-green-200 transition-colors"
+                      title="Descargar todos los archivos"
+                    >
+                      <Download className="w-4 h-4" />
+                      <span>Descargar todo</span>
+                    </button>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  {task.completedFiles.map((file, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200"
+                    >
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                          {file.type.startsWith('image/') ? (
+                            <Image className="w-5 h-5 text-blue-600" />
+                          ) : file.type.startsWith('video/') ? (
+                            <Video className="w-5 h-5 text-purple-600" />
+                          ) : file.type.includes('pdf') ? (
+                            <FileText className="w-5 h-5 text-red-600" />
+                          ) : (
+                            <File className="w-5 h-5 text-gray-600" />
+                          )}
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">{file.name}</p>
+                          <p className="text-xs text-gray-500">
+                            {formatFileSize(file.size)} • {new Date(file.uploaded_at).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => downloadFile(file)}
+                        className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                        title="Descargar archivo"
+                      >
+                        <Download className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Review Notes */}
+            {task.reviewNotes && (
+              <div className="mb-6">
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Notas de revisión</h3>
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <p className="text-gray-700">{task.reviewNotes}</p>
+                </div>
+              </div>
+            )}
 
             {/* Task Details Grid */}
             <div className="grid grid-cols-2 gap-6 mb-6">
@@ -408,44 +533,49 @@ const TaskView: React.FC<TaskViewProps> = ({
 
             {/* Status Actions */}
             <div className="flex space-x-2">
-              {task.status !== 'todo' && (
-                <button
-                  onClick={() => onStatusChange(task.id, 'todo')}
-                  className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-                >
-                  <Circle className="w-4 h-4" />
-                  <span>Mark as Todo</span>
-                </button>
-              )}
-              
-              {task.status !== 'in-progress' && (
+              {task.status === 'todo' && (
                 <button
                   onClick={() => onStatusChange(task.id, 'in-progress')}
                   className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-blue-700 bg-blue-100 rounded-lg hover:bg-blue-200 transition-colors"
                 >
                   <Play className="w-4 h-4" />
-                  <span>Mark as In Progress</span>
+                  <span>Iniciar</span>
                 </button>
               )}
               
-              {task.status !== 'review' && (
+              {(task.status === 'in-progress' || task.status === 'corrections') && onMarkForReview && (
                 <button
-                  onClick={() => onStatusChange(task.id, 'review')}
+                  onClick={() => onMarkForReview(task)}
                   className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-yellow-700 bg-yellow-100 rounded-lg hover:bg-yellow-200 transition-colors"
                 >
                   <AlertCircle className="w-4 h-4" />
-                  <span>Mark for Review</span>
+                  <span>Marcar para revisión</span>
                 </button>
               )}
               
-              {task.status !== 'done' && (
-                <button
-                  onClick={() => onStatusChange(task.id, 'done')}
-                  className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-green-700 bg-green-100 rounded-lg hover:bg-green-200 transition-colors"
-                >
-                  <CheckCircle className="w-4 h-4" />
-                  <span>Mark as Done</span>
-                </button>
+              {task.status === 'review' && (
+                <div className="flex space-x-2">
+                                     <button
+                     onClick={() => {
+                       if (onReturnTask) {
+                         onReturnTask(task);
+                       } else {
+                         onStatusChange(task.id, 'in-progress');
+                       }
+                     }}
+                     className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-blue-700 bg-blue-100 rounded-lg hover:bg-blue-200 transition-colors"
+                   >
+                     <Play className="w-4 h-4" />
+                     <span>Devolver a In Progress</span>
+                   </button>
+                  <button
+                    onClick={() => onStatusChange(task.id, 'done')}
+                    className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-green-700 bg-green-100 rounded-lg hover:bg-green-200 transition-colors"
+                  >
+                    <CheckCircle className="w-4 h-4" />
+                    <span>Completar</span>
+                  </button>
+                </div>
               )}
             </div>
 
@@ -693,7 +823,9 @@ const CommentsSection: React.FC<{ taskId: string; authorProfileId?: string }> = 
         }}
       />
     </div>
-  );
-};
+     );
+ };
 
-export default TaskView;
+ 
+ 
+ export default TaskView;

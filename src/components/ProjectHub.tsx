@@ -95,6 +95,7 @@ const ProjectHub: React.FC<ProjectHubProps> = ({
     switch (status) {
       case 'done': return 'bg-green-100 text-green-700 border-green-200';
       case 'in-progress': return 'bg-blue-100 text-blue-700 border-blue-200';
+      case 'corrections': return 'bg-orange-100 text-orange-700 border-orange-200';
       case 'review': return 'bg-yellow-100 text-yellow-700 border-yellow-200';
       case 'todo': return 'bg-gray-100 text-gray-700 border-gray-200';
       default: return 'bg-gray-100 text-gray-700 border-gray-200';
@@ -447,6 +448,7 @@ const ProjectHub: React.FC<ProjectHubProps> = ({
                       <option value="all">Todos los estados</option>
                       <option value="todo">Pendiente</option>
                       <option value="in-progress">En Progreso</option>
+                      <option value="corrections">Correcciones</option>
                       <option value="review">En Revisión</option>
                       <option value="done">Completado</option>
                     </select>
@@ -534,7 +536,7 @@ const ProjectHub: React.FC<ProjectHubProps> = ({
                     <div className="flex items-center space-x-3">
                       <div className="flex items-center space-x-2">
                         <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(task.status)}`}>
-                          {task.status.replace('-', ' ')}
+                          {task.status === 'corrections' ? 'Correcciones' : task.status.replace('-', ' ')}
                         </div>
                         <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getPriorityColor(task.priority)}`}>
                           {task.priority}
