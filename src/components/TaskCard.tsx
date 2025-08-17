@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { Task, TaskPriority, TaskStatus } from '../types';
 import { isDateOverdue } from '../utils/dateUtils';
+import { useTranslation } from '../hooks/useTranslation';
 
 interface TaskCardProps {
   task: Task;
@@ -40,6 +41,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
   onDragStart,
   onDragEnd
 }) => {
+  const { t, getTaskStatusTranslation, getPriorityTranslation } = useTranslation();
   const getPriorityColor = (priority: TaskPriority) => {
     switch (priority) {
       case 'urgent': return 'text-red-600 bg-red-50';
@@ -86,8 +88,8 @@ const TaskCard: React.FC<TaskCardProps> = ({
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
     
-    if (date.toDateString() === today.toDateString()) return 'Today';
-    if (date.toDateString() === tomorrow.toDateString()) return 'Tomorrow';
+    if (date.toDateString() === today.toDateString()) return t('tasks.today');
+    if (date.toDateString() === tomorrow.toDateString()) return t('tasks.tomorrow');
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
@@ -118,17 +120,14 @@ const TaskCard: React.FC<TaskCardProps> = ({
         <div className="flex items-center space-x-2">
           <div className={`inline-flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(task.priority)}`}>
             {getPriorityIcon(task.priority)}
-            <span className="capitalize">{task.priority}</span>
+            <span className="capitalize">{getPriorityTranslation(task.priority)}</span>
           </div>
           
           {/* Status indicator */}
           <div className={`inline-flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(task.status)}`}>
             {getStatusIcon(task.status)}
             <span className="capitalize">
-              {task.status === 'corrections' ? 'Correcciones' : 
-               task.status === 'in-progress' ? 'En progreso' :
-               task.status === 'review' ? 'En revisión' :
-               task.status}
+              {getTaskStatusTranslation(task.status)}
             </span>
           </div>
         </div>
@@ -232,7 +231,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
               className="flex items-center space-x-1 px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
             >
               <Play className="w-3 h-3" />
-              <span>Iniciar</span>
+              <span>{t('tasks.startTask')}</span>
             </button>
           )}
 
@@ -245,7 +244,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
               className="flex items-center space-x-1 px-2 py-1 text-xs bg-yellow-100 text-yellow-700 rounded hover:bg-yellow-200 transition-colors"
             >
               <Eye className="w-3 h-3" />
-              <span>Revisar</span>
+              <span>{t('tasks.reviewTask')}</span>
             </button>
           )}
 
@@ -297,7 +296,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
               title="Convertir a contenido"
             >
               <MessageSquare className="w-3 h-3" />
-              <span>Convertir</span>
+              <span>{t('tasks.convertTask')}</span>
             </button>
           )}
 
@@ -312,7 +311,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
               title="Archivar tarea"
             >
               <CheckCircle2 className="w-3 h-3" />
-              <span>Archivar</span>
+              <span>{t('tasks.archiveTask')}</span>
             </button>
           )}
         </div>

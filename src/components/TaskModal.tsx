@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { Task, TaskPriority, User as UserType } from '../types';
 import { formatDateForSupabase, parseSupabaseDate } from '../utils/dateUtils';
+import { useTranslation } from '../hooks/useTranslation';
 
 interface TaskModalProps {
   task?: Task;
@@ -41,6 +42,7 @@ const TaskModal: React.FC<TaskModalProps> = ({
   });
 
   const [newTag, setNewTag] = useState('');
+  const { t } = useTranslation();
 
   // Reset form when modal opens/closes or task changes
   useEffect(() => {
@@ -201,7 +203,7 @@ const TaskModal: React.FC<TaskModalProps> = ({
             {/* Header */}
             <div className="flex items-center justify-between p-6 border-b border-gray-200">
               <h3 className="text-lg font-medium text-gray-900">
-                {task ? 'Edit Task' : 'Create New Task'}
+                {task ? t('tasks.editTask') : t('tasks.newTask')}
               </h3>
               <div className="flex items-center space-x-2">
                 {task && onDelete && (
@@ -230,7 +232,7 @@ const TaskModal: React.FC<TaskModalProps> = ({
               {/* Title */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Task Title
+                  {t('tasks.taskTitle')}
                 </label>
                 <input
                   type="text"
@@ -238,14 +240,14 @@ const TaskModal: React.FC<TaskModalProps> = ({
                   value={formData.title}
                   onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Enter task title..."
+                  placeholder={t('tasks.taskTitle')}
                 />
               </div>
 
               {/* Description */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Description
+                  {t('tasks.description')}
                 </label>
                 <textarea
                   value={formData.description}
@@ -261,7 +263,7 @@ const TaskModal: React.FC<TaskModalProps> = ({
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     <Flag className="w-4 h-4 inline mr-1" />
-                    Priority
+                    {t('tasks.priority')}
                   </label>
                   <select
                     value={formData.priority}
@@ -280,7 +282,7 @@ const TaskModal: React.FC<TaskModalProps> = ({
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     <User className="w-4 h-4 inline mr-1" />
-                    Assignee
+                    {t('tasks.assignee')}
                   </label>
                   <AssigneeSelect users={users} value={formData.assigneeId} onChange={(val) => setFormData(prev => ({ ...prev, assigneeId: val }))} />
                 </div>
@@ -288,7 +290,7 @@ const TaskModal: React.FC<TaskModalProps> = ({
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     <Calendar className="w-4 h-4 inline mr-1" />
-                    Due Date
+                    {t('tasks.dueDate')}
                   </label>
                   <input
                     type="date"
@@ -306,7 +308,7 @@ const TaskModal: React.FC<TaskModalProps> = ({
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   <Tag className="w-4 h-4 inline mr-1" />
-                  Tags
+                  {t('tasks.tags')}
                 </label>
                 <div className="flex flex-wrap gap-2 mb-2">
                   {formData.tags.map((tag, index) => (
@@ -332,7 +334,7 @@ const TaskModal: React.FC<TaskModalProps> = ({
                     onChange={(e) => setNewTag(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
                     className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                    placeholder="Add a tag..."
+                    placeholder={t('tasks.addTag')}
                   />
                   <button
                     type="button"
@@ -345,22 +347,22 @@ const TaskModal: React.FC<TaskModalProps> = ({
               </div>
             </div>
 
-            {/* Footer */}
+                        {/* Footer */}
             <div className="flex items-center justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50">
               <button
                 type="button"
                 onClick={handleClose}
                 className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
               >
-                Cancel
+                {t('common.cancel')}
               </button>
                               <button
                   type="submit"
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                 >
-                  {task ? 'Update Task' : 'Create Task'}
+                  {task ? t('common.update') : t('common.create')}
                 </button>
-            </div>
+              </div>
           </form>
         </div>
       </div>

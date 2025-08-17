@@ -2,6 +2,7 @@ import React from 'react'
 import { Task } from '../types'
 import { Flag } from 'lucide-react'
 import { formatDateForDisplay } from '../utils/dateUtils'
+import { useTranslation } from '../hooks/useTranslation'
 
 interface TaskListProps {
   tasks: Task[]
@@ -49,13 +50,15 @@ const Tooltip: React.FC<{ text: string; className?: string; children: React.Reac
 )
 
 const TaskList: React.FC<TaskListProps> = ({ tasks, onTaskClick }) => {
+  const { t, getTaskStatusTranslation, getPriorityTranslation } = useTranslation();
+  
   return (
     <div className="bg-white rounded-lg border border-gray-200">
       <div className="grid grid-cols-12 px-4 py-3 text-xs font-semibold text-gray-500 border-b">
-        <div className="col-span-6">Task</div>
-        <div className="col-span-2">Assignee</div>
-        <div className="col-span-2">Due</div>
-        <div className="col-span-2">Status</div>
+        <div className="col-span-6">{t('tasks.taskTitle')}</div>
+        <div className="col-span-2">{t('tasks.assignee')}</div>
+        <div className="col-span-2">{t('tasks.dueDate')}</div>
+        <div className="col-span-2">{t('tasks.status')}</div>
       </div>
       <ul className="divide-y">
         {tasks.map(task => (
@@ -65,7 +68,7 @@ const TaskList: React.FC<TaskListProps> = ({ tasks, onTaskClick }) => {
             onClick={() => onTaskClick(task)}
           >
             <div className="col-span-6 flex items-center gap-2">
-              <Tooltip text={capitalize(task.priority)}>
+              <Tooltip text={getPriorityTranslation(task.priority)}>
                 <Flag className={`w-4 h-4 ${priorityColor[task.priority]}`} fill="currentColor" />
               </Tooltip>
               <span className="text-sm text-gray-900 line-clamp-1">{task.title}</span>
@@ -78,13 +81,13 @@ const TaskList: React.FC<TaskListProps> = ({ tasks, onTaskClick }) => {
             </div>
             <div className="col-span-2">
               <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium capitalize ${statusBadge[task.status]}`}>
-                {task.status.replace('-', ' ')}
+                {getTaskStatusTranslation(task.status)}
               </span>
             </div>
           </li>
         ))}
         {tasks.length === 0 && (
-          <li className="px-4 py-6 text-sm text-gray-500">No tasks found.</li>
+          <li className="px-4 py-6 text-sm text-gray-500">{t('tasks.noTasksFound')}</li>
         )}
       </ul>
     </div>

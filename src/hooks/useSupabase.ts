@@ -4,6 +4,7 @@ import { Database } from '../lib/supabase'
 import { useSupabaseError } from './useSupabaseError'
 import { SupabaseTask } from '../types'
 
+
 // Hook principal para acceder a la instancia de Supabase
 export const useSupabase = () => {
   return { supabase }
@@ -11,13 +12,13 @@ export const useSupabase = () => {
 
 // Tipos extraídos de la base de datos
 type Profile = Database['public']['Tables']['profiles']['Row']
-type Project = Database['public']['Tables']['projects']['Row']
+type SupabaseProject = Database['public']['Tables']['projects']['Row']
 // Removed unused Task alias
 type ContentItem = Database['public']['Tables']['content_items']['Row']
 
 // Hook para obtener todos los proyectos
 export const useProjects = () => {
-  const [projects, setProjects] = useState<Project[]>([])
+  const [projects, setProjects] = useState<SupabaseProject[]>([])
   const [loading, setLoading] = useState(true)
   const { error, handleError, clearError } = useSupabaseError()
 
@@ -166,6 +167,11 @@ export const useTasks = () => {
         .from('tasks')
         .select(`
           *,
+          projects!inner (
+            id,
+            name,
+            color
+          ),
           task_subtasks (
             id,
             title,
@@ -665,11 +671,34 @@ export const useProfiles = () => {
     return () => { try { supabase.removeChannel(channel) } catch {} }
   }, [])
 
+  const updateProfile = async (id: string, updates: Database['public']['Tables']['profiles']['Update']) => {
+    try {
+      clearError()
+      const { data, error: supabaseError } = await supabase
+        .from('profiles')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single()
+
+      if (supabaseError) {
+        handleError(supabaseError)
+        throw supabaseError
+      }
+      setProfiles(prev => prev.map(p => p.id === id ? data : p))
+      return data
+    } catch (err) {
+      handleError(err)
+      throw err
+    }
+  }
+
   return {
     profiles,
     loading,
     error,
-    fetchProfiles
+    fetchProfiles,
+    updateProfile
   }
 }
 

@@ -195,6 +195,7 @@ tasks (
   completed_files JSONB DEFAULT '[]',
   review_date TIMESTAMP WITH TIME ZONE,
   review_notes TEXT,
+  archived_at TIMESTAMP WITH TIME ZONE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 )
@@ -214,6 +215,7 @@ tasks (
 - `completed_files`: Array JSON de archivos completados (para conversión a contenido)
 - `review_date`: Fecha de revisión
 - `review_notes`: Notas de revisión
+- `archived_at`: Fecha de archivo (se establece automáticamente cuando status cambia a 'archived')
 - `created_at`: Fecha de creación
 - `updated_at`: Fecha de última actualización
 
@@ -523,6 +525,13 @@ Función que actualiza automáticamente el campo `updated_at` cuando se modifica
 - ✅ `tasks`
 - ✅ `content_items`
 - ✅ `subscriptions`
+
+### **`update_archived_at_timestamp()`**
+Función que actualiza automáticamente el campo `archived_at` cuando el status de una tarea cambia a 'archived'.
+
+**Aplicado a:**
+- ✅ `tasks` - Establece `archived_at = NOW()` cuando status cambia a 'archived'
+- ✅ `tasks` - Limpia `archived_at = NULL` cuando status cambia de 'archived' a otro
 
 ---
 

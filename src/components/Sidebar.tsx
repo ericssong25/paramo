@@ -10,10 +10,12 @@ import {
   Image,
   CheckSquare,
   TrendingUp,
-  Bell
+  Bell,
+  Archive
 } from 'lucide-react';
 import { Project, User } from '../types';
 import { User as SupabaseUser } from '@supabase/supabase-js';
+import { useTranslation } from '../hooks/useTranslation';
 
 interface SidebarProps {
   projects: Project[];
@@ -27,6 +29,7 @@ interface SidebarProps {
   onOpenSettings: () => void;
   onOpenNotifications: () => void;
   profileName?: string; // nombre proveniente de profiles.name
+  userAvatar?: string; // avatar del usuario
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -41,7 +44,9 @@ const Sidebar: React.FC<SidebarProps> = ({
   onOpenSettings,
   onOpenNotifications,
   profileName,
+  userAvatar,
 }) => {
+  const { t } = useTranslation();
   // Truncar texto
   const truncateText = (text: string, maxLength: number) => {
     if (!text) return '';
@@ -75,7 +80,15 @@ const Sidebar: React.FC<SidebarProps> = ({
       <div className="p-4 border-b border-gray-200">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            {AvatarPlaceholder}
+            {userAvatar ? (
+              <img
+                src={userAvatar}
+                alt="Avatar"
+                className="w-10 h-10 rounded-full object-cover border border-muted/40"
+              />
+            ) : (
+              AvatarPlaceholder
+            )}
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-primary truncate">
                 {displayName}
@@ -112,7 +125,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             }`}
           >
             <Home className="w-4 h-4" />
-            <span className="text-sm font-medium">All Tasks</span>
+            <span className="text-sm font-medium">{t('navigation.allTasks')}</span>
           </button>
 
           <button 
@@ -127,7 +140,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             }`}
           >
             <Image className="w-4 h-4" />
-            <span className="text-sm font-medium">Content Calendar</span>
+            <span className="text-sm font-medium">{t('navigation.contentCalendar')}</span>
           </button>
 
           <button 
@@ -139,7 +152,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             }`}
           >
             <CreditCard className="w-4 h-4" />
-            <span className="text-sm font-medium">Subscriptions</span>
+            <span className="text-sm font-medium">{t('navigation.subscriptions')}</span>
           </button>
 
           <button 
@@ -151,22 +164,22 @@ const Sidebar: React.FC<SidebarProps> = ({
             }`}
           >
             <CheckSquare className="w-4 h-4" />
-            <span className="text-sm font-medium">Approvals</span>
+            <span className="text-sm font-medium">{t('navigation.approvals')}</span>
           </button>
 
           <button className="w-full flex items-center space-x-3 px-3 py-2 text-gray-700 rounded-lg hover:bg-gray-50 text-left transition-colors">
             <Search className="w-4 h-4" />
-            <span className="text-sm font-medium">Search</span>
+            <span className="text-sm font-medium">{t('navigation.search')}</span>
           </button>
 
           <button className="w-full flex items-center space-x-3 px-3 py-2 text-gray-700 rounded-lg hover:bg-gray-50 text-left transition-colors">
             <Calendar className="w-4 h-4" />
-            <span className="text-sm font-medium">Calendar</span>
+            <span className="text-sm font-medium">{t('navigation.calendar')}</span>
           </button>
 
           <button className="w-full flex items-center space-x-3 px-3 py-2 text-gray-700 rounded-lg hover:bg-gray-50 text-left transition-colors">
             <TrendingUp className="w-4 h-4" />
-            <span className="text-sm font-medium">Analytics</span>
+            <span className="text-sm font-medium">{t('navigation.analytics')}</span>
           </button>
 
           <button 
@@ -176,7 +189,22 @@ const Sidebar: React.FC<SidebarProps> = ({
             }`}
           >
             <Users className="w-4 h-4" />
-            <span className="text-sm font-medium">Team</span>
+            <span className="text-sm font-medium">{t('navigation.team')}</span>
+          </button>
+
+          <button
+            onClick={() => {
+              onSelectProject(null);
+              onViewChange('archived');
+            }}
+            className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors ${
+              activeView === 'archived'
+                ? 'bg-blue-50 text-blue-700'
+                : 'text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            <Archive className="w-4 h-4" />
+            <span className="text-sm font-medium">{t('navigation.archivedTasks')}</span>
           </button>
         </nav>
 
@@ -184,7 +212,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         <div className="px-4 py-2 border-t border-gray-200">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Projects
+              {t('projects.title')}
             </h3>
             <button
               onClick={onCreateProject}
@@ -212,7 +240,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{project.name}</p>
                   <p className="text-xs text-gray-500">
-                    {project.completedTasks}/{project.taskCount} tasks
+                    {project.completedTasks}/{project.taskCount} {t('tasks.taskCount')}
                   </p>
                 </div>
                 <div className="w-8 h-1 bg-gray-200 rounded-full overflow-hidden">
@@ -237,7 +265,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           className="w-full flex items-center space-x-3 px-3 py-2 text-gray-700 rounded-lg hover:bg-gray-50 text-left transition-colors"
         >
           <Settings className="w-4 h-4" />
-          <span className="text-sm font-medium">Settings</span>
+          <span className="text-sm font-medium">{t('navigation.settings')}</span>
         </button>
       </div>
     </div>

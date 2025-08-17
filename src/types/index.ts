@@ -80,6 +80,7 @@ export interface Task {
   completedFiles?: TaskFile[];
   reviewDate?: Date;
   reviewNotes?: string;
+  archivedAt?: Date;
 }
 
 export interface Subtask {
@@ -254,7 +255,7 @@ export interface SupabaseTask {
   id: string;
   title: string;
   description: string | null;
-  status: 'todo' | 'in-progress' | 'corrections' | 'review' | 'done';
+  status: 'todo' | 'in-progress' | 'corrections' | 'review' | 'done' | 'archived';
   priority: 'low' | 'normal' | 'high' | 'urgent';
   assignee_id: string | null;
   due_date: string | null;
@@ -264,8 +265,14 @@ export interface SupabaseTask {
   completed_files: any | null;
   review_date: string | null;
   review_notes: string | null;
+  archived_at: string | null;
   created_at: string;
   updated_at: string;
+  projects?: {
+    id: string;
+    name: string;
+    color: string;
+  };
   task_subtasks?: {
     id: string;
     title: string;

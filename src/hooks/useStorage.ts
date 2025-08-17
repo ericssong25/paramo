@@ -7,7 +7,53 @@ export const useStorage = () => {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const uploadFile = async (file: File, taskId?: string): Promise<TaskFile | null> => {
+  const uploadFile = async (bucketName: string, filePath: string, file: File): Promise<string> => {
+    setUploading(true);
+    setError(null);
+
+    try {
+      console.log('🔄 Iniciando subida de archivo:', {
+        bucketName,
+        filePath,
+        fileName: file.name,
+        fileSize: file.size,
+        fileType: file.type
+      });
+
+      // Verificar autenticación
+      const { data: { user } } = await supabase.auth.getUser();
+      console.log('👤 Usuario autenticado:', user?.id);
+
+      // Subir archivo a Supabase Storage
+      const { data, error: uploadError } = await supabase.storage
+        .from(bucketName)
+        .upload(filePath, file);
+
+      if (uploadError) {
+        console.error('❌ Error de subida:', uploadError);
+        throw new Error(uploadError.message);
+      }
+
+      console.log('✅ Archivo subido exitosamente:', data);
+
+      // Obtener URL pública del archivo
+      const { data: urlData } = await supabase.storage
+        .from(bucketName)
+        .getPublicUrl(filePath);
+
+      console.log('🔗 URL pública generada:', urlData.publicUrl);
+      return urlData.publicUrl;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Error al subir archivo';
+      console.error('❌ Error en uploadFile:', err);
+      setError(errorMessage);
+      throw err;
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const uploadTaskFile = async (file: File, taskId?: string): Promise<TaskFile | null> => {
     setUploading(true);
     setError(null);
 
@@ -54,10 +100,10 @@ export const useStorage = () => {
     }
   };
 
-  const deleteFile = async (filePath: string): Promise<boolean> => {
+  const deleteFile = async (bucketName: string, filePath: string): Promise<boolean> => {
     try {
       const { error } = await supabase.storage
-        .from('task-files')
+        .from(bucketName)
         .remove([filePath]);
 
       if (error) {
@@ -165,6 +211,7 @@ export const useStorage = () => {
 
   return {
     uploadFile,
+    uploadTaskFile,
     deleteFile,
     deleteFilesByTask,
     getFileUrl,

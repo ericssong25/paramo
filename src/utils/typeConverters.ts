@@ -70,6 +70,7 @@ export const convertSupabaseTaskToTask = (task: SupabaseTask, profiles: Supabase
     completedFiles: task.completed_files || [],
     reviewDate: task.review_date ? new Date(task.review_date) : undefined,
     reviewNotes: task.review_notes || undefined,
+    archivedAt: task.archived_at ? new Date(task.archived_at) : undefined,
   };
   
   return convertedTask;

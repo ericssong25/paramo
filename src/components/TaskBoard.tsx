@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Plus } from 'lucide-react';
 import { Task, TaskStatus } from '../types';
 import TaskCard from './TaskCard';
+import { useTranslation } from '../hooks/useTranslation';
 
 interface TaskBoardProps {
   tasks: Task[];
@@ -24,12 +25,13 @@ const TaskBoard: React.FC<TaskBoardProps> = ({
   onConvertToContent,
   onArchiveTask,
 }) => {
+  const { t, getTaskStatusTranslation } = useTranslation();
   const [draggedTask, setDraggedTask] = useState<Task | null>(null);
   const statusColumns = [
-    { id: 'todo' as TaskStatus, title: 'To Do', color: 'bg-gray-100' },
-    { id: 'in-progress' as TaskStatus, title: 'In Progress', color: 'bg-blue-100' },
-    { id: 'review' as TaskStatus, title: 'Review', color: 'bg-yellow-100' },
-    { id: 'done' as TaskStatus, title: 'Done', color: 'bg-green-100' },
+    { id: 'todo' as TaskStatus, title: t('tasks.toDo'), color: 'bg-gray-100' },
+    { id: 'in-progress' as TaskStatus, title: t('tasks.inProgress'), color: 'bg-blue-100' },
+    { id: 'review' as TaskStatus, title: t('tasks.review'), color: 'bg-yellow-100' },
+    { id: 'done' as TaskStatus, title: t('tasks.done'), color: 'bg-green-100' },
   ];
 
   const getTasksByStatus = (status: TaskStatus) => {
@@ -170,7 +172,7 @@ const TaskBoard: React.FC<TaskBoardProps> = ({
                   <button
                     onClick={onCreateTask}
                     className="p-1 text-gray-400 hover:text-gray-600 hover:bg-white rounded transition-colors"
-                    title="Add new task"
+                    title={t('tasks.newTask')}
                   >
                     <Plus className="w-4 h-4" />
                   </button>
@@ -209,7 +211,7 @@ const TaskBoard: React.FC<TaskBoardProps> = ({
                           : 'Suelta aquí para mover'
                         : draggedTask && !isColumnValidForDrop(column.id)
                         ? 'Movimiento no válido'
-                        : 'No tasks'
+                        : t('tasks.noTasksInColumn')
                       }
                     </p>
                   </div>

@@ -15,6 +15,7 @@ import {
   ListChecks
 } from 'lucide-react';
 import { Project, TaskFilter, TaskPriority, TaskStatus, SupabaseProfile } from '../types';
+import { useTranslation } from '../hooks/useTranslation';
 
 const DateWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <div className="relative">
@@ -180,6 +181,7 @@ const Header: React.FC<HeaderProps> = ({
   onTaskViewChange,
   assignees = [],
 }) => {
+  const { t, getTaskStatusTranslation, getPriorityTranslation } = useTranslation();
   const [activePanel, setActivePanel] = React.useState<null | 'filter' | 'sort' | 'assignee' | 'due'>(null)
   //
 
@@ -199,6 +201,7 @@ const Header: React.FC<HeaderProps> = ({
       'corrections': active ? 'bg-orange-50 border-orange-200 text-orange-700' : 'bg-gray-50 border-gray-200 text-gray-700',
       'review': active ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-gray-50 border-gray-200 text-gray-700',
       'done': active ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-gray-50 border-gray-200 text-gray-700',
+      'archived': active ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-gray-50 border-gray-200 text-gray-700',
     }
     return `${base} ${map[s]}`
   }
@@ -265,7 +268,7 @@ const Header: React.FC<HeaderProps> = ({
               />
             )}
             <h1 className="text-2xl font-bold text-gray-900">
-              {selectedProject ? selectedProject.name : 'All Tasks'}
+              {selectedProject ? selectedProject.name : t('navigation.allTasks')}
             </h1>
           </div>
 
@@ -274,7 +277,7 @@ const Header: React.FC<HeaderProps> = ({
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
             <input
               type="text"
-              placeholder="Search tasks..."
+              placeholder={t('tasks.searchTasks')}
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
               className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64"
@@ -288,40 +291,40 @@ const Header: React.FC<HeaderProps> = ({
             <button
               onClick={() => onTaskViewChange && onTaskViewChange('board')}
               className={`flex items-center gap-1 px-3 py-2 text-sm ${taskView === 'board' ? 'bg-gray-100 text-gray-900' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'}`}
-              title="Board view"
+              title={t('tasks.board')}
             >
               <LayoutGrid className="w-4 h-4" />
-              Board
+              {t('tasks.board')}
             </button>
             <button
               onClick={() => onTaskViewChange && onTaskViewChange('list')}
               className={`flex items-center gap-1 px-3 py-2 text-sm border-l border-gray-200 ${taskView === 'list' ? 'bg-gray-100 text-gray-900' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'}`}
-              title="List view"
+              title={t('tasks.list')}
             >
               <List className="w-4 h-4" />
-              List
+              {t('tasks.list')}
             </button>
           </div>
 
           {/* Filter Controls */}
           <button onClick={() => togglePanel('filter')} className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors ${activePanel==='filter' ? 'bg-gray-100 text-gray-900' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'}`}>
             <Filter className="w-4 h-4" />
-            <span className="text-sm font-medium">Filter</span>
+            <span className="text-sm font-medium">{t('tasks.filter')}</span>
           </button>
 
           <button onClick={() => togglePanel('sort')} className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors ${activePanel==='sort' ? 'bg-gray-100 text-gray-900' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'}`}>
             <SortAsc className="w-4 h-4" />
-            <span className="text-sm font-medium">Sort</span>
+            <span className="text-sm font-medium">{t('tasks.sort')}</span>
           </button>
 
           <button onClick={() => togglePanel('assignee')} className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors ${activePanel==='assignee' ? 'bg-gray-100 text-gray-900' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'}`}>
             <Users className="w-4 h-4" />
-            <span className="text-sm font-medium">Assignee</span>
+            <span className="text-sm font-medium">{t('tasks.assignee')}</span>
           </button>
 
           <button onClick={() => togglePanel('due')} className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors ${activePanel==='due' ? 'bg-gray-100 text-gray-900' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'}`}>
             <Calendar className="w-4 h-4" />
-            <span className="text-sm font-medium">Due Date</span>
+            <span className="text-sm font-medium">{t('tasks.dueDate')}</span>
           </button>
 
           {/* Action Buttons */}
@@ -333,7 +336,7 @@ const Header: React.FC<HeaderProps> = ({
               className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
             >
               <Plus className="w-4 h-4" />
-              <span className="text-sm font-medium">New Task</span>
+              <span className="text-sm font-medium">{t('tasks.newTask')}</span>
             </button>
           </div>
         </div>
@@ -369,18 +372,18 @@ const Header: React.FC<HeaderProps> = ({
             )}
             {filter.overdue && (
               <button onClick={() => onFilterChange({ ...filter, overdue: undefined })} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs bg-red-50 text-red-700">
-                Overdue
+                {t('tasks.overdue')}
                 <X className="w-3 h-3" />
               </button>
             )}
             {(filter.sortBy || filter.sortDir) && (
               <button onClick={() => onFilterChange({ ...filter, sortBy: undefined, sortDir: undefined })} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs bg-gray-50 text-gray-700 border border-gray-200">
-                Sort
+                {t('tasks.sort')}
                 <X className="w-3 h-3" />
               </button>
             )}
           </div>
-          <button onClick={clearAllFilters} className="text-sm text-gray-600 hover:text-gray-900">Clear all</button>
+          <button onClick={clearAllFilters} className="text-sm text-gray-600 hover:text-gray-900">{t('tasks.clearAll')}</button>
         </div>
       )}
 
@@ -392,7 +395,7 @@ const Header: React.FC<HeaderProps> = ({
               {activePanel === 'filter' && (
                 <>
                   <div>
-                    <div className="text-xs font-semibold text-gray-500 mb-2">Status</div>
+                    <div className="text-xs font-semibold text-gray-500 mb-2">{t('tasks.status')}</div>
                     <div className="flex flex-wrap gap-2">
                       {statusOptions.map(s => (
                         <button
@@ -400,13 +403,13 @@ const Header: React.FC<HeaderProps> = ({
                           onClick={() => handleToggleStatus(s)}
                           className={statusClass(s, isActive(filter.status as any, s))}
                         >
-                          {s === 'corrections' ? 'Correcciones' : s.replace('-', ' ')}
+                          {getTaskStatusTranslation(s)}
                         </button>
                       ))}
                     </div>
                   </div>
                   <div>
-                    <div className="text-xs font-semibold text-gray-500 mb-2">Priority</div>
+                    <div className="text-xs font-semibold text-gray-500 mb-2">{t('tasks.priority')}</div>
                     <div className="flex flex-wrap gap-2">
                       {priorityOptions.map(p => (
                         <button
@@ -414,14 +417,14 @@ const Header: React.FC<HeaderProps> = ({
                           onClick={() => handleTogglePriority(p)}
                           className={priorityClass(p, isActive(filter.priority as any, p))}
                         >
-                          {p}
+                          {getPriorityTranslation(p)}
                         </button>
                       ))}
                     </div>
                   </div>
                   <div className="flex justify-end gap-2">
-                    <button onClick={resetFilterPanel} className="px-3 py-2 text-sm rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50">Reset</button>
-                    <button onClick={() => setActivePanel(null)} className="px-3 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700">Apply</button>
+                    <button onClick={resetFilterPanel} className="px-3 py-2 text-sm rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50">{t('tasks.reset')}</button>
+                    <button onClick={() => setActivePanel(null)} className="px-3 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700">{t('tasks.apply')}</button>
                   </div>
                 </>
               )}
@@ -429,7 +432,7 @@ const Header: React.FC<HeaderProps> = ({
               {activePanel === 'assignee' && (
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
                   <div>
-                    <label className="block text-xs font-semibold text-gray-500 mb-1">Assignee</label>
+                    <label className="block text-xs font-semibold text-gray-500 mb-1">{t('tasks.assignee')}</label>
                     <MultiSelectDropdown
                       values={filter.assignee || []}
                       onChange={handleAssigneesChange}
@@ -438,8 +441,8 @@ const Header: React.FC<HeaderProps> = ({
                     />
                   </div>
                   <div className="sm:col-start-3 flex justify-end gap-2">
-                    <button onClick={resetAssigneePanel} className="px-3 py-2 text-sm rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50">Reset</button>
-                    <button onClick={() => setActivePanel(null)} className="px-3 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700">Apply</button>
+                    <button onClick={resetAssigneePanel} className="px-3 py-2 text-sm rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50">{t('tasks.reset')}</button>
+                    <button onClick={() => setActivePanel(null)} className="px-3 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700">{t('tasks.apply')}</button>
                   </div>
                 </div>
               )}
@@ -447,7 +450,7 @@ const Header: React.FC<HeaderProps> = ({
               {activePanel === 'due' && (
                 <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-end">
                   <div>
-                    <label className="block text-xs font-semibold text-gray-500 mb-1">Due from</label>
+                    <label className="block text-xs font-semibold text-gray-500 mb-1">{t('tasks.dueFrom')}</label>
                     <DateWrapper>
                       <input
                         type="date"
@@ -458,7 +461,7 @@ const Header: React.FC<HeaderProps> = ({
                     </DateWrapper>
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-gray-500 mb-1">Due to</label>
+                    <label className="block text-xs font-semibold text-gray-500 mb-1">{t('tasks.dueTo')}</label>
                     <DateWrapper>
                       <input
                         type="date"
@@ -470,11 +473,11 @@ const Header: React.FC<HeaderProps> = ({
                   </div>
                   <div className="flex items-center justify-center gap-2 self-center">
                     <input id="overdue" type="checkbox" checked={!!filter.overdue} onChange={handleToggleOverdue} className="rounded border-gray-300" />
-                    <label htmlFor="overdue" className="text-sm text-gray-700">Overdue only</label>
+                    <label htmlFor="overdue" className="text-sm text-gray-700">{t('tasks.overdueOnly')}</label>
                   </div>
                   <div className="sm:col-start-4 flex justify-end gap-2">
-                    <button onClick={resetDuePanel} className="px-3 py-2 text-sm rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50">Reset</button>
-                    <button onClick={() => setActivePanel(null)} className="px-3 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700">Apply</button>
+                    <button onClick={resetDuePanel} className="px-3 py-2 text-sm rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50">{t('tasks.reset')}</button>
+                    <button onClick={() => setActivePanel(null)} className="px-3 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700">{t('tasks.apply')}</button>
                   </div>
                 </div>
               )}
@@ -482,23 +485,23 @@ const Header: React.FC<HeaderProps> = ({
               {activePanel === 'sort' && (
                 <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-end">
                   <div>
-                    <label className="block text-xs font-semibold text-gray-500 mb-1">Sort by</label>
+                    <label className="block text-xs font-semibold text-gray-500 mb-1">{t('tasks.sortBy')}</label>
                     <SingleSelectDropdown
                       value={filter.sortBy}
                       onChange={(val) => onFilterChange({ ...filter, sortBy: (val || undefined) as any })}
                       options={[
-                        { value: '', label: 'Default', icon: <ListChecks className="w-4 h-4 text-gray-400"/> },
-                        { value: 'dueDate', label: 'Due date', icon: <Clock className="w-4 h-4 text-gray-400"/> },
-                        { value: 'priority', label: 'Priority', icon: <Flag className="w-4 h-4 text-gray-400"/> },
-                        { value: 'status', label: 'Status', icon: <List className="w-4 h-4 text-gray-400"/> },
-                        { value: 'createdAt', label: 'Created', icon: <Clock className="w-4 h-4 text-gray-400"/> },
-                        { value: 'title', label: 'Title', icon: <Type className="w-4 h-4 text-gray-400"/> },
+                        { value: '', label: t('tasks.default'), icon: <ListChecks className="w-4 h-4 text-gray-400"/> },
+                        { value: 'dueDate', label: t('tasks.dueDate'), icon: <Clock className="w-4 h-4 text-gray-400"/> },
+                        { value: 'priority', label: t('tasks.priority'), icon: <Flag className="w-4 h-4 text-gray-400"/> },
+                        { value: 'status', label: t('tasks.status'), icon: <List className="w-4 h-4 text-gray-400"/> },
+                        { value: 'createdAt', label: t('tasks.created'), icon: <Clock className="w-4 h-4 text-gray-400"/> },
+                        { value: 'title', label: t('tasks.title'), icon: <Type className="w-4 h-4 text-gray-400"/> },
                       ]}
-                      placeholder="Default"
+                      placeholder={t('tasks.default')}
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-gray-500 mb-1">Direction</label>
+                    <label className="block text-xs font-semibold text-gray-500 mb-1">{t('tasks.direction')}</label>
                     <div className="inline-flex items-center gap-2">
                       <span className={`px-2 py-1 rounded-md text-xs ${(!filter.sortDir || filter.sortDir==='asc') ? 'bg-blue-50 text-blue-700' : 'text-gray-600'}`}>ABC</span>
                       <button
@@ -513,8 +516,8 @@ const Header: React.FC<HeaderProps> = ({
                     </div>
                   </div>
                   <div className="sm:col-start-4 flex justify-end gap-2">
-                    <button onClick={resetSortPanel} className="px-3 py-2 text-sm rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50">Reset</button>
-                    <button onClick={() => setActivePanel(null)} className="px-3 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700">Apply</button>
+                    <button onClick={resetSortPanel} className="px-3 py-2 text-sm rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50">{t('tasks.reset')}</button>
+                    <button onClick={() => setActivePanel(null)} className="px-3 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700">{t('tasks.apply')}</button>
                   </div>
                 </div>
               )}

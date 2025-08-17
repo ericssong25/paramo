@@ -18,6 +18,7 @@ import { useProjects, useTasks, useContentItems, useProfiles, usePreferences, us
 import { useContent } from './hooks/useContent';
 import { useStorage } from './hooks/useStorage';
 import { useAuth } from './hooks/useAuth';
+import { useTranslation } from './hooks/useTranslation';
 import { convertSupabaseProjectToProject, convertSupabaseTaskToTask, convertSupabaseContentItemToContentItem } from './utils/typeConverters';
 import { formatDateForSupabase } from './utils/dateUtils';
 import { Project, Task, ContentItem, User, TaskStatus, Client, Approval, TaskFilter, Subscription, TaskFile } from './types';
@@ -31,6 +32,8 @@ import ConvertToContentModal from './components/ConvertToContentModal';
 import ContentViewModal from './components/ContentViewModal';
 import EditContentModal from './components/EditContentModal';
 import DeleteContentConfirmationModal from './components/DeleteContentConfirmationModal';
+import ArchivedTasksView from './components/ArchivedTasksView';
+import ProfileEditModal from './components/ProfileEditModal';
 import { 
   mockUsers, 
   mockClients, 
@@ -42,8 +45,9 @@ function App() {
   const { projects: supabaseProjects, loading: projectsLoading, error: projectsError, createProject, updateProject } = useProjects();
   const { tasks: supabaseTasks, loading: tasksLoading, error: tasksError, createTask, updateTask, deleteTask, updateSubtaskPositions, createSubtask, updateSubtask, deleteSubtask, setLocalTasks } = useTasks();
   const { addComment } = useComments();
+  const { t } = useTranslation();
 
-  const { profiles: supabaseProfiles, loading: profilesLoading, error: profilesError } = useProfiles();
+  const { profiles: supabaseProfiles, loading: profilesLoading, error: profilesError, updateProfile } = useProfiles();
   const { fetchPreferencesForUser, upsertPreferences } = usePreferences();
   const { subscriptions, loading: subscriptionsLoading, error: subscriptionsError, createSubscription, updateSubscription, deleteSubscription } = useSubscriptions();
   const { deleteFilesByTask } = useStorage();
@@ -338,6 +342,48 @@ function App() {
       await deleteTask(taskId);
     } catch (error) {
       console.error('Error deleting task:', error);
+    }
+  };
+
+  // Wrapper functions for ArchivedTasksView
+  const handleUpdateTask = async (taskId: string, updates: any) => {
+    try {
+      await updateTask(taskId, updates);
+    } catch (error) {
+      console.error('Error updating task:', error);
+    }
+  };
+
+  const handleDeleteTaskForArchived = async (taskId: string) => {
+    try {
+      await deleteTask(taskId);
+    } catch (error) {
+      console.error('Error deleting task:', error);
+    }
+  };
+
+  // Profile management
+  const currentUserProfile = useMemo(() => {
+    if (!user?.id) return undefined;
+    const profile = supabaseProfiles.find(profile => profile.user_id === user.id);
+    return profile ? {
+      id: profile.id,
+      name: profile.name,
+      avatar: profile.avatar || undefined
+    } : undefined;
+  }, [user?.id, supabaseProfiles]);
+
+  const handleUpdateProfile = async (updates: { name: string; avatar?: string }) => {
+    if (!currentUserProfile) {
+      console.error('No user profile found');
+      return;
+    }
+
+    try {
+      await updateProfile(currentUserProfile.id, updates);
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      throw error;
     }
   };
 
@@ -1120,6 +1166,18 @@ function App() {
         );
       case 'team':
         return <Team />;
+      case 'archived':
+        return (
+          <ArchivedTasksView 
+            currentUser={users[0]} 
+            tasks={tasks}
+            projects={projects}
+            onUpdateTask={handleUpdateTask}
+            onDeleteTask={handleDeleteTaskForArchived}
+            isLoading={tasksLoading}
+            error={tasksError}
+          />
+        );
       default:
         return taskView === 'list' ? (
           <TaskList
@@ -1144,19 +1202,20 @@ function App() {
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Sidebar */}
-      <Sidebar
-        projects={projects}
-        currentUser={users[0]}
-        authenticatedUser={user}
-        selectedProject={selectedProjectId}
-        activeView={activeView}
-        onSelectProject={setSelectedProjectId}
-        onViewChange={setActiveView}
-        onCreateProject={handleCreateProject}
-        onOpenSettings={handleOpenSettings}
-        onOpenNotifications={handleOpenNotifications}
-        profileName={supabaseProfiles.find(p => p.user_id === user?.id)?.name}
-      />
+              <Sidebar
+          projects={projects}
+          currentUser={users[0]}
+          authenticatedUser={user}
+          selectedProject={selectedProjectId}
+          activeView={activeView}
+          onSelectProject={setSelectedProjectId}
+          onViewChange={setActiveView}
+          onCreateProject={handleCreateProject}
+          onOpenSettings={handleOpenSettings}
+          onOpenNotifications={handleOpenNotifications}
+          profileName={supabaseProfiles.find(p => p.user_id === user?.id)?.name}
+          userAvatar={currentUserProfile?.avatar}
+        />
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
@@ -1283,6 +1342,8 @@ function App() {
         onClose={handleCloseSettings}
         user={user}
         onLogout={handleLogout}
+        currentProfile={currentUserProfile}
+        onUpdateProfile={handleUpdateProfile}
       />
 
       {/* Notifications Modal */}
