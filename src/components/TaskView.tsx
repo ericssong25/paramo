@@ -449,7 +449,7 @@ const TaskView: React.FC<TaskViewProps> = ({
                       className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm shadow-sm hover:bg-gray-50"
                     >
                       {task.assignee ? (
-                        <img src={task.assignee.avatar} alt={task.assignee.name} className="w-6 h-6 rounded-full object-cover" />
+                        <img src={task.assignee.avatar} alt={task.assignee.name} className="w-8 h-8 rounded-full object-cover" />
                       ) : (
                         <span className="w-6 h-6 rounded-full bg-gray-200 inline-block" />
                       )}
@@ -464,14 +464,14 @@ const TaskView: React.FC<TaskViewProps> = ({
                         <ul className="max-h-60 overflow-auto">
                           <li>
                             <button className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-800 hover:bg-gray-50" onClick={() => { onChangeAssignee && onChangeAssignee(task.id, null); setAssigneeOpen(false); }}>
-                              <span className="w-6 h-6 rounded-full bg-gray-200 inline-block" />
+                              <span className="w-8 h-8 rounded-full bg-gray-200 inline-block" />
                               Unassigned
                             </button>
                           </li>
                           {users.filter(u => u.name.toLowerCase().includes(assigneeSearch.toLowerCase())).map(u => (
                             <li key={u.id}>
                               <button className={`w-full flex items-center gap-2 px-3 py-2 text-sm ${task.assignee?.id === u.id ? 'bg-blue-50 text-blue-700' : 'text-gray-800 hover:bg-gray-50'}`} onClick={() => { onChangeAssignee && onChangeAssignee(task.id, u.id); /* Optimistic UI: update local */ (task as any).assignee = { ...u }; setAssigneeOpen(false); }}>
-                                <img src={u.avatar} alt={u.name} className="w-6 h-6 rounded-full object-cover" />
+                                <img src={u.avatar} alt={u.name} className="w-8 h-8 rounded-full object-cover" />
                                 <span className="truncate">{u.name}</span>
                               </button>
                             </li>
@@ -787,7 +787,7 @@ const CommentsSection: React.FC<{ taskId: string; authorProfileId?: string }> = 
                 isMine ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-gray-200'
               }`}>
                 <div className={`flex items-start ${isMine ? 'flex-row-reverse space-x-reverse' : ''} space-x-3`}>
-                  <img src={author.avatar} alt={author.name} className="w-6 h-6 rounded-full object-cover" />
+                  <img src={author.avatar} alt={author.name} className="w-8 h-8 rounded-full object-cover" />
                   <div className="flex-1">
                     <div className={`flex items-center ${isMine ? 'justify-end' : ''} space-x-2`}>
                       <span className="text-sm font-medium text-gray-900">{isMine ? 'Tú' : author.name}</span>

@@ -329,7 +329,7 @@ const ProjectModal: React.FC<ProjectModalProps> = ({
                   key={color}
                   type="button"
                   onClick={() => updateFormData('color', color)}
-                  className={`w-8 h-8 rounded-full border-2 ${
+                  className={`w-10 h-10 rounded-full border-2 ${
                     formData.color === color ? 'border-gray-400' : 'border-gray-200'
                   }`}
                   style={{ backgroundColor: color }}

@@ -173,9 +173,9 @@ const TaskModal: React.FC<TaskModalProps> = ({
       >
         <div className="p-2 border-b bg-white"><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search member..." className="w-full border border-gray-300 rounded-md text-sm px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"/></div>
         <ul className="max-h-60 overflow-auto">
-          <li><button className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-800 hover:bg-gray-50" onClick={() => { onChange(''); setOpen(false) }}><span className="w-6 h-6 rounded-full bg-gray-200 inline-block"/>Unassigned</button></li>
+          <li><button className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-800 hover:bg-gray-50" onClick={() => { onChange(''); setOpen(false) }}><span className="w-8 h-8 rounded-full bg-gray-200 inline-block"/>Unassigned</button></li>
           {filtered.map(u => (
-            <li key={u.id}><button className={`w-full flex items-center gap-2 px-3 py-2 text-sm ${u.id===value?'bg-blue-50 text-blue-700':'text-gray-800 hover:bg-gray-50'}`} onClick={() => { onChange(u.id); setOpen(false) }}><img src={u.avatar} className="w-6 h-6 rounded-full object-cover"/><span className="truncate">{u.name}</span></button></li>
+                          <li key={u.id}><button className={`w-full flex items-center gap-2 px-3 py-2 text-sm ${u.id===value?'bg-blue-50 text-blue-700':'text-gray-800 hover:bg-gray-50'}`} onClick={() => { onChange(u.id); setOpen(false) }}><img src={u.avatar} className="w-8 h-8 rounded-full object-cover"/><span className="truncate">{u.name}</span></button></li>
           ))}
         </ul>
       </div>
@@ -184,7 +184,7 @@ const TaskModal: React.FC<TaskModalProps> = ({
     return (
       <div className="relative">
         <button ref={anchorRef} type="button" onClick={() => setOpen(v => !v)} className="w-full inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-300 bg-white text-sm">
-          {selected ? <img src={selected.avatar} className="w-6 h-6 rounded-full object-cover"/> : <span className="w-6 h-6 rounded-full bg-gray-200 inline-block"/>}
+          {selected ? <img src={selected.avatar} className="w-8 h-8 rounded-full object-cover"/> : <span className="w-8 h-8 rounded-full bg-gray-200 inline-block"/>}
           <span className="truncate">{selected ? selected.name : 'Unassigned'}</span>
           <svg className="ml-auto w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
         </button>

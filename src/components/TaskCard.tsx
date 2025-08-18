@@ -136,7 +136,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
           <img 
             src={task.assignee.avatar} 
             alt={task.assignee.name}
-            className="w-5 h-5 rounded-full object-cover border border-white shadow-sm"
+            className="w-10 h-10 rounded-full object-cover border border-white shadow-sm"
             title={task.assignee.name}
           />
         )}

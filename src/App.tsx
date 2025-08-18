@@ -1102,7 +1102,7 @@ function App() {
           project={currentProject}
           tasks={filteredTasks}
           contentItems={contentItems}
-          users={users}
+          users={selectableUsers}
           onTaskClick={handleViewTask}
           onEditTask={handleEditTask}
           onCreateTask={handleCreateTask}

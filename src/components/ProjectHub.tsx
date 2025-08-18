@@ -293,7 +293,7 @@ const ProjectHub: React.FC<ProjectHubProps> = ({
                          <img 
                            src={project.projectLead.avatar} 
                            alt={project.projectLead.name}
-                           className="w-8 h-8 rounded-full"
+                           className="w-10 h-10 rounded-full"
                          />
                          <span className="text-gray-900">{project.projectLead.name}</span>
                        </>
@@ -552,7 +552,7 @@ const ProjectHub: React.FC<ProjectHubProps> = ({
                         <img 
                           src={task.assignee.avatar} 
                           alt={task.assignee.name}
-                          className="w-6 h-6 rounded-full object-cover"
+                          className="w-8 h-8 rounded-full object-cover"
                           title={task.assignee.name}
                         />
                       )}
