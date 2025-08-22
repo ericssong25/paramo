@@ -179,6 +179,13 @@ const ProjectHub: React.FC<ProjectHubProps> = ({
           Nueva Transacción
         </button>
         <button
+          onClick={onCreateTask}
+          className="flex items-center px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          Nueva Tarea
+        </button>
+        <button
           onClick={() => onEditProject(project)}
           className="flex items-center px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
         >
@@ -540,19 +547,12 @@ const ProjectHub: React.FC<ProjectHubProps> = ({
               </div>
             </div>
             
-            {/* Results Counter and New Task Button */}
+            {/* Results Counter */}
             <div className="flex items-center justify-between mb-4">
               <p className="text-sm text-gray-600">
                 Mostrando {filteredTasks.length} de {projectTasks.length} tareas
                 {searchQuery && ` que coinciden con "${searchQuery}"`}
               </p>
-              <button
-                onClick={onCreateTask}
-                className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Nueva Tarea
-              </button>
             </div>
             
             {/* Task List without subtasks */}

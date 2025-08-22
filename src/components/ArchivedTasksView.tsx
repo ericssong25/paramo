@@ -149,7 +149,7 @@ const ArchivedTasksView: React.FC<ArchivedTasksViewProps> = ({
 
         {/* Mensaje de limpieza */}
         {cleanupMessage && (
-          <div className={`mt-4 p-3 rounded-lg ${
+          <div className={`mb-4 p-3 rounded-lg ${
             cleanupMessage.includes('Error') 
               ? 'bg-red-50 text-red-700 border border-red-200' 
               : 'bg-green-50 text-green-700 border border-green-200'
@@ -159,7 +159,7 @@ const ArchivedTasksView: React.FC<ArchivedTasksViewProps> = ({
         )}
 
         {/* Información sobre eliminación automática */}
-        <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+        <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
           <div className="flex items-start space-x-3">
             <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5" />
             <div>
@@ -171,17 +171,16 @@ const ArchivedTasksView: React.FC<ArchivedTasksViewProps> = ({
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Lista de tareas archivadas */}
-      {archivedTasks.length === 0 ? (
-        <div className="text-center py-12">
-          <Archive className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No hay tareas archivadas</h3>
-          <p className="text-gray-500">Las tareas que archives aparecerán aquí</p>
-        </div>
-      ) : (
-        <div className="space-y-4">
+        {/* Lista de tareas archivadas */}
+        {archivedTasks.length === 0 ? (
+          <div className="text-center py-12">
+            <Archive className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No hay tareas archivadas</h3>
+            <p className="text-gray-500">Las tareas que archives aparecerán aquí</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
           {archivedTasks.map((task) => {
             const daysSinceArchived = getDaysSinceArchived(task);
             const isOldTask = daysSinceArchived > 30;
@@ -248,8 +247,9 @@ const ArchivedTasksView: React.FC<ArchivedTasksViewProps> = ({
               </div>
             );
           })}
-        </div>
-      )}
+          </div>
+        )}
+      </div>
     </div>
   );
 };

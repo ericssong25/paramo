@@ -103,9 +103,12 @@ const TransactionsList: React.FC = () => {
 
              <div className="flex-1 overflow-auto p-6">
         <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-          <div className="p-4 overflow-auto">
+          <div className="overflow-auto">
             {loading ? (
-              <div className="text-gray-600">Cargando...</div>
+              <div className="p-8 text-center text-gray-600">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                Cargando transacciones...
+              </div>
             ) : (
               <table className="min-w-full w-full table-fixed">
                 <colgroup>
@@ -115,34 +118,51 @@ const TransactionsList: React.FC = () => {
                   <col className="w-[16%]" /> {/* Estado */}
                   <col className="w-[44%]" /> {/* Proyecto */}
                 </colgroup>
-                <thead>
-                  <tr className="text-left text-xs text-gray-500">
-                    <th className="py-2 pr-4 whitespace-nowrap">Fecha</th>
-                    <th className="py-2 pr-4 whitespace-nowrap">Tipo</th>
-                    <th className="py-2 pr-4 whitespace-nowrap text-right">Monto</th>
-                    <th className="py-2 pr-4 whitespace-nowrap">Estado</th>
-                    <th className="py-2 pr-4 whitespace-nowrap">Proyecto</th>
+                <thead className="bg-gray-50">
+                  <tr className="text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                    <th className="px-6 py-4 whitespace-nowrap">Fecha</th>
+                    <th className="px-6 py-4 whitespace-nowrap">Tipo</th>
+                    <th className="px-6 py-4 whitespace-nowrap text-right">Monto</th>
+                    <th className="px-6 py-4 whitespace-nowrap">Estado</th>
+                    <th className="px-6 py-4 whitespace-nowrap">Proyecto</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-gray-200">
                   {paged.length === 0 && (
-                    <tr className="border-t">
-                      <td colSpan={5} className="py-6 text-center text-sm text-gray-500">Sin resultados</td>
+                    <tr>
+                      <td colSpan={5} className="px-6 py-12 text-center">
+                        <div className="text-gray-500">
+                          <div className="text-lg font-medium mb-2">No se encontraron transacciones</div>
+                          <div className="text-sm">Intenta ajustar los filtros de búsqueda</div>
+                        </div>
+                      </td>
                     </tr>
                   )}
                   {paged.map(r => (
-                    <tr key={r.id} className="border-t text-sm cursor-pointer hover:bg-gray-50" onClick={() => setSelected(r)}>
-                      <td className="py-2 pr-4 text-gray-700 whitespace-nowrap">{new Date(r.date + 'T00:00:00').toLocaleDateString()}</td>
-                      <td className="py-2 pr-4 whitespace-nowrap">
-                        <span className={`px-2 py-0.5 rounded-full border text-xs ${r.type==='income' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-700 border-red-200'}`}>{r.type==='income' ? 'Ingreso' : 'Egreso'}</span>
+                    <tr key={r.id} className="text-sm cursor-pointer hover:bg-gray-50 transition-colors duration-150" onClick={() => setSelected(r)}>
+                      <td className="px-6 py-4 text-gray-700 whitespace-nowrap">{new Date(r.date + 'T00:00:00').toLocaleDateString()}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${r.type==='income' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}>
+                          {r.type==='income' ? 'Ingreso' : 'Egreso'}
+                        </span>
                       </td>
-                      <td className={`py-2 pr-4 font-medium whitespace-nowrap text-right ${r.type==='income' ? 'text-emerald-700' : 'text-red-700'}`}>{new Intl.NumberFormat(undefined, { style: 'currency', currency: r.currency }).format(r.amount)}</td>
-                      <td className="py-2 pr-4 text-gray-700 capitalize whitespace-nowrap">{r.status}</td>
-                      <td className="py-2 pr-4">
+                      <td className={`px-6 py-4 font-semibold whitespace-nowrap text-right ${r.type==='income' ? 'text-emerald-700' : 'text-red-700'}`}>
+                        {new Intl.NumberFormat(undefined, { style: 'currency', currency: r.currency }).format(r.amount)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          r.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                          r.status === 'cleared' ? 'bg-blue-100 text-blue-800' :
+                          'bg-green-100 text-green-800'
+                        }`}>
+                          {r.status === 'pending' ? 'Pendiente' : r.status === 'cleared' ? 'Confirmado' : 'Conciliado'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
                         {r.projects?.name ? (
-                          <span className="inline-flex items-center gap-1 text-gray-800">
-                            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: r.projects?.color || '#9CA3AF' }} />
-                            <span className="truncate block max-w-full">{r.projects?.name}</span>
+                          <span className="inline-flex items-center gap-2 text-gray-800">
+                            <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: r.projects?.color || '#9CA3AF' }} />
+                            <span className="truncate">{r.projects?.name}</span>
                           </span>
                         ) : (
                           <span className="text-gray-400">—</span>
@@ -154,15 +174,73 @@ const TransactionsList: React.FC = () => {
               </table>
             )}
           </div>
-        </div>
-
-        {/* Pagination controls */}
-        <div className="px-6 py-3 border-t flex items-center justify-between text-sm bg-white">
-          <span className="text-gray-600">Página {page} de {totalPages}</span>
-          <div className="flex items-center gap-2">
-            <button disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))} className={`px-3 py-1.5 rounded border ${page<=1 ? 'text-gray-400 border-gray-200' : 'text-gray-700 border-gray-300 hover:bg-gray-50'}`}>Anterior</button>
-            <button disabled={page >= totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))} className={`px-3 py-1.5 rounded border ${page>=totalPages ? 'text-gray-400 border-gray-200' : 'text-gray-700 border-gray-300 hover:bg-gray-50'}`}>Siguiente</button>
-          </div>
+          
+          {/* Pagination controls - Integrated with table */}
+          {!loading && paged.length > 0 && (
+            <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                                     <span className="text-sm text-gray-700">
+                     {filtered.length === 1 ? (
+                       <>Mostrando <span className="font-medium">1</span> transacción</>
+                     ) : (
+                       <>
+                         Mostrando <span className="font-medium">{((page - 1) * pageSize) + 1}</span> a <span className="font-medium">{Math.min(page * pageSize, filtered.length)}</span> de <span className="font-medium">{filtered.length}</span> transacciones
+                       </>
+                     )}
+                   </span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <button 
+                    disabled={page <= 1} 
+                    onClick={() => setPage(p => Math.max(1, p - 1))} 
+                    className={`inline-flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors duration-150 ${
+                      page <= 1 
+                        ? 'text-gray-400 bg-gray-100 cursor-not-allowed' 
+                        : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 hover:border-gray-400'
+                    }`}
+                  >
+                    Anterior
+                  </button>
+                  
+                  <div className="flex items-center space-x-1">
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      const pageNum = i + 1;
+                      const isActive = pageNum === page;
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => setPage(pageNum)}
+                          className={`inline-flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors duration-150 ${
+                            isActive
+                              ? 'bg-blue-600 text-white'
+                              : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 hover:border-gray-400'
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    })}
+                    {totalPages > 5 && (
+                      <span className="px-2 text-gray-500">...</span>
+                    )}
+                  </div>
+                  
+                  <button 
+                    disabled={page >= totalPages} 
+                    onClick={() => setPage(p => Math.min(totalPages, p + 1))} 
+                    className={`inline-flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors duration-150 ${
+                      page >= totalPages 
+                        ? 'text-gray-400 bg-gray-100 cursor-not-allowed' 
+                        : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 hover:border-gray-400'
+                    }`}
+                  >
+                    Siguiente
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

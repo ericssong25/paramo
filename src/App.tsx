@@ -167,7 +167,7 @@ function App() {
 
   const projects = useMemo(() => {
     return supabaseProjects.map(project => {
-      const projectTasks = tasks.filter(task => task.projectId === project.id);
+      const projectTasks = tasks.filter(task => task.projectId === project.id && task.status !== 'archived');
       const completedTasks = projectTasks.filter(task => task.status === 'done').length;
 
       const base = convertSupabaseProjectToProject(project);
