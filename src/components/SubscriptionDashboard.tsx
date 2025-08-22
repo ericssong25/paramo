@@ -26,6 +26,7 @@ import {
 import { Subscription, SubscriptionStatus } from '../types';
 import SubscriptionModal from './SubscriptionModal';
 import SubscriptionDetailModal from './SubscriptionDetailModal';
+import ConsistentHeader from './ConsistentHeader';
 import { usePinSecurity } from '../hooks/usePinSecurity';
 import PinModal from './PinModal';
 import CredentialViewModal from './CredentialViewModal';
@@ -460,66 +461,47 @@ const SubscriptionDashboard: React.FC<SubscriptionDashboardProps> = ({
 
   return (
     <div className="h-full flex flex-col">
-      {/* Header */}
-      <div className="px-6 py-4 border-b border-gray-200 bg-white w-full">
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="text-2xl font-bold text-gray-900">Subscriptions</h1>
+      <ConsistentHeader
+        title="Suscripciones"
+        searchQuery={query}
+        onSearchChange={setQuery}
+        searchPlaceholder="Buscar suscripciones..."
+        onCreateAction={handleAddSubscription}
+        createActionLabel="Nueva Suscripción"
+      >
+        {/* Status Filter */}
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value as SubscriptionStatus | 'all')}
+          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        >
+          <option value="all">Todos los estados</option>
+          <option value="active">Activo</option>
+          <option value="paused">Pausado</option>
+          <option value="cancelled">Cancelado</option>
+          <option value="expired">Expirado</option>
+          <option value="pending">Pendiente</option>
+        </select>
+
+        {/* View Mode Toggle */}
+        <div className="flex border border-gray-300 rounded-lg">
           <button
-            onClick={handleAddSubscription}
-            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            onClick={() => setViewMode('grid')}
+            className={`p-2 ${viewMode === 'grid' ? 'bg-blue-50 text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}
           >
-            <Plus className="w-4 h-4" />
-            <span>Add Subscription</span>
+            <Grid3X3 className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => setViewMode('list')}
+            className={`p-2 ${viewMode === 'list' ? 'bg-blue-50 text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}
+          >
+            <List className="w-4 h-4" />
           </button>
         </div>
-
-        <div className="flex items-center space-x-4">
-          {/* Search */}
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search subscriptions..."
-              className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
-
-          {/* Status Filter */}
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as SubscriptionStatus | 'all')}
-            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            <option value="all">All Status</option>
-            <option value="active">Active</option>
-            <option value="paused">Paused</option>
-            <option value="cancelled">Cancelled</option>
-            <option value="expired">Expired</option>
-            <option value="pending">Pending</option>
-          </select>
-
-          {/* View Mode Toggle */}
-          <div className="flex border border-gray-300 rounded-lg">
-            <button
-              onClick={() => setViewMode('grid')}
-              className={`p-2 ${viewMode === 'grid' ? 'bg-blue-50 text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}
-            >
-              <Grid3X3 className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setViewMode('list')}
-              className={`p-2 ${viewMode === 'list' ? 'bg-blue-50 text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}
-            >
-              <List className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      </div>
+      </ConsistentHeader>
 
       {/* Content */}
-      <div className="flex-1 p-6 overflow-auto">
+      <div className="flex-1 overflow-auto p-6">
         {loading ? (
           <div className="text-gray-500">Loading subscriptions...</div>
         ) : filtered.length === 0 ? (

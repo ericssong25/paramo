@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   X, 
   Calendar, 
@@ -37,14 +37,37 @@ const ProjectModal: React.FC<ProjectModalProps> = ({
     client: project?.client || '',
     projectLeadId: project?.projectLead?.id || '',
     objective: project?.objective || '',
-    scope: project?.scope || [''],
+    scope: (project?.scope && project.scope.length > 0 ? project.scope : ['']),
     finalDueDate: project?.finalDueDate ? formatDateForSupabase(project.finalDueDate) : '',
     serviceCycle: project?.serviceCycle || 'monthly',
     reportingDay: project?.reportingDay || 1,
-    monthlyDeliverables: project?.monthlyDeliverables || [''],
+    monthlyDeliverables: (project?.monthlyDeliverables && project.monthlyDeliverables.length > 0 ? project.monthlyDeliverables : ['']),
     driveLink: project?.driveLink || '',
     milestones: project?.milestones || [] as Milestone[]
   });
+
+  // Sincronizar el formulario cuando se abra el modal o cambie el proyecto a editar
+  useEffect(() => {
+    if (!isOpen) return;
+    setFormData({
+      name: project?.name || '',
+      description: project?.description || '',
+      color: project?.color || '#3B82F6',
+      type: (project?.type || 'finite') as ProjectType,
+      status: (project?.status || 'planning') as ProjectStatus,
+      client: project?.client || '',
+      projectLeadId: project?.projectLead?.id || '',
+      objective: project?.objective || '',
+      scope: (project?.scope && project.scope.length > 0 ? project.scope : ['']),
+      finalDueDate: project?.finalDueDate ? formatDateForSupabase(project.finalDueDate) : '',
+      serviceCycle: project?.serviceCycle || 'monthly',
+      reportingDay: project?.reportingDay || 1,
+      monthlyDeliverables: (project?.monthlyDeliverables && project.monthlyDeliverables.length > 0 ? project.monthlyDeliverables : ['']),
+      driveLink: project?.driveLink || '',
+      milestones: project?.milestones || [] as Milestone[]
+    });
+    setErrors({});
+  }, [project?.id, isOpen]);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 

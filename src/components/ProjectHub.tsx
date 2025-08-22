@@ -12,11 +12,13 @@ import {
   Plus,
   Edit,
   Search,
-  Flag,
-  Image
+  Flag
 } from 'lucide-react';
+import TransactionModal from './TransactionModal';
+import { supabase } from '../lib/supabase';
 import { Project, User, Task, ContentItem } from '../types';
 import ContentCalendar from './ContentCalendar';
+import ConsistentHeader from './ConsistentHeader';
 
 interface ProjectHubProps {
   project: Project;
@@ -45,8 +47,8 @@ const ProjectHub: React.FC<ProjectHubProps> = ({
   onCreateContent,
   onViewContent,
   onEditProject,
-  onBackToOverview,
-  onNavigateToContentCalendar,
+  // onBackToOverview,
+  // onNavigateToContentCalendar,
   onMarkAsPublished,
 }) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'tasks' | 'calendar'>('overview');
@@ -58,6 +60,7 @@ const ProjectHub: React.FC<ProjectHubProps> = ({
   });
   const [searchQuery, setSearchQuery] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
+  const [isTxOpen, setIsTxOpen] = useState(false);
 
   // Resetear pestaña activa cuando cambia el proyecto
   useEffect(() => {
@@ -147,42 +150,63 @@ const ProjectHub: React.FC<ProjectHubProps> = ({
   };
 
     return (
-    <div ref={containerRef} className="h-full flex flex-col overflow-auto">
-      {/* Header del Proyecto - Siempre comprimido */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-md">
-        <div className="px-6 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div 
-                className="w-4 h-4 rounded-full"
-                style={{ backgroundColor: project.color }}
-              />
-              <div>
-                <h1 className="font-bold text-gray-900 text-lg">
-                  {project.name}
-                </h1>
-                <p className="text-sm text-gray-600">{project.client}</p>
-              </div>
-            </div>
-            
-            <div className="flex items-center space-x-3">
-              <button
-                onClick={onBackToOverview}
-                className="flex items-center px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                ← Volver
-              </button>
-              <button
-                onClick={() => onEditProject(project)}
-                className="flex items-center px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <Edit className="w-4 h-4 mr-2" />
-                Editar
-              </button>
+    <div ref={containerRef} className="h-full flex flex-col">
+      {/* Header del Proyecto usando ConsistentHeader */}
+      <ConsistentHeader
+        title={
+          <div className="flex items-center space-x-3">
+            <div 
+              className="w-4 h-4 rounded-full"
+              style={{ backgroundColor: project.color }}
+            />
+            <div>
+              <span className="font-bold text-gray-900 text-lg">
+                {project.name}
+              </span>
+              <p className="text-sm text-gray-600">{project.client}</p>
             </div>
           </div>
-        </div>
-      </div>
+        }
+        showSearch={false}
+        showCreateButton={false}
+      >
+        <button
+          onClick={() => setIsTxOpen(true)}
+          className="flex items-center px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          title="Registrar transacción"
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          Nueva Transacción
+        </button>
+        <button
+          onClick={() => onEditProject(project)}
+          className="flex items-center px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+        >
+          <Edit className="w-4 h-4 mr-2" />
+          Editar
+        </button>
+      </ConsistentHeader>
+      {/* Quick transaction modal associated to this project */}
+      {isTxOpen && (
+        <TransactionModal
+          isOpen={isTxOpen}
+          onClose={() => setIsTxOpen(false)}
+          baseCurrency={'USD'}
+          projects={[{ id: project.id, name: project.name, color: project.color as any }] as any}
+          onSave={async (tx) => {
+            await supabase.from('transactions').insert({
+              type: tx.type,
+              amount: tx.amount,
+              currency: tx.currency,
+              date: tx.date,
+              status: tx.status,
+              notes: tx.notes || null,
+              source: 'manual',
+              project_id: project.id,
+            });
+          }}
+        />
+      )}
 
       {/* Tabs - Siempre visibles */}
       <div className="bg-white border-b border-gray-200">
@@ -223,7 +247,7 @@ const ProjectHub: React.FC<ProjectHubProps> = ({
       </div>
 
              {/* Contenido de las Tabs */}
-       <div className="flex-1">
+       <div className="flex-1 overflow-auto">
          {activeTab === 'overview' ? (
            <div className="p-6 space-y-6">
              {/* Información Rápida */}

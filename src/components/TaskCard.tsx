@@ -4,7 +4,6 @@ import {
   MessageSquare, 
   Paperclip, 
   CheckCircle2,
-  Circle,
   Calendar,
   AlertTriangle,
   Flag,
@@ -58,27 +57,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
     }
   };
 
-  const getStatusColor = (status: TaskStatus) => {
-    switch (status) {
-      case 'done': return 'bg-green-100 text-green-700 border-green-200';
-      case 'in-progress': return 'bg-blue-100 text-blue-700 border-blue-200';
-      case 'corrections': return 'bg-orange-100 text-orange-700 border-orange-200';
-      case 'review': return 'bg-yellow-100 text-yellow-700 border-yellow-200';
-      case 'todo': return 'bg-gray-100 text-gray-700 border-gray-200';
-      default: return 'bg-gray-100 text-gray-700 border-gray-200';
-    }
-  };
-
-  const getStatusIcon = (status: TaskStatus) => {
-    switch (status) {
-      case 'done': return <CheckCircle2 className="w-3 h-3" />;
-      case 'in-progress': return <Play className="w-3 h-3" />;
-      case 'corrections': return <AlertTriangle className="w-3 h-3" />;
-      case 'review': return <Eye className="w-3 h-3" />;
-      case 'todo': return <Circle className="w-3 h-3" />;
-      default: return <Circle className="w-3 h-3" />;
-    }
-  };
+  // status badge removido en vista board; columnas representan el estado
 
   const isOverdue = isDateOverdue(task.dueDate) && task.status !== 'done';
   const completedSubtasks = task.subtasks.filter(st => st.completed).length;
@@ -115,20 +94,12 @@ const TaskCard: React.FC<TaskCardProps> = ({
       })}
       onDragEnd={onDragEnd}
     >
-      {/* Priority, Status and Assignee */}
+      {/* Priority, Project and Assignee */}
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center space-x-2">
           <div className={`inline-flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(task.priority)}`}>
             {getPriorityIcon(task.priority)}
             <span className="capitalize">{getPriorityTranslation(task.priority)}</span>
-          </div>
-          
-          {/* Status indicator */}
-          <div className={`inline-flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(task.status)}`}>
-            {getStatusIcon(task.status)}
-            <span className="capitalize">
-              {getTaskStatusTranslation(task.status)}
-            </span>
           </div>
         </div>
         
@@ -142,32 +113,46 @@ const TaskCard: React.FC<TaskCardProps> = ({
         )}
       </div>
 
+      {/* Project badge under priority and above title */}
+      {task.projectId && (task as any).projectName && (
+        <div className="mb-1">
+          <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-50 border border-gray-200 text-gray-700">
+            <span className="w-2 h-2 rounded-full mr-1" style={{ backgroundColor: (task as any).projectColor || '#9CA3AF' }} />
+            <span className="truncate max-w-[180px]">{(task as any).projectName}</span>
+          </div>
+        </div>
+      )}
+
       {/* Task Title */}
       <h3 className="font-medium text-gray-900 mb-2 line-clamp-2 text-sm">
         {task.title}
       </h3>
 
-      {/* Task Description */}
-      {task.description && (
-        <p className="text-sm text-gray-600 mb-2 line-clamp-2">
-          {task.description}
-        </p>
-      )}
+      {/* Task Description (max 2 lines; keep space if empty) */}
+      <p className="text-sm text-gray-600 mb-2 min-h-[40px]">
+        <span className="line-clamp-2 block">
+          {task.description && task.description.trim().length > 0 ? task.description : 'Descripción vacía'}
+        </span>
+      </p>
 
-      {/* Subtasks Progress */}
-      {task.subtasks.length > 0 && (
-        <div className="flex items-center space-x-2 mb-2">
-          <div className="flex-1 bg-gray-200 rounded-full h-1.5 overflow-hidden">
-            <div 
-              className="h-full bg-green-500 transition-all duration-300"
-              style={{ width: `${(completedSubtasks / task.subtasks.length) * 100}%` }}
-            />
+      {/* Subtasks Progress (reserve space even if none) */}
+      <div className="mb-2 min-h-[18px]">
+        {task.subtasks.length > 0 ? (
+          <div className="flex items-center space-x-2">
+            <div className="flex-1 bg-gray-200 rounded-full h-1.5 overflow-hidden">
+              <div 
+                className="h-full bg-green-500 transition-all duration-300"
+                style={{ width: `${(completedSubtasks / task.subtasks.length) * 100}%` }}
+              />
+            </div>
+            <span className="text-xs text-gray-500 font-medium">
+              {completedSubtasks}/{task.subtasks.length}
+            </span>
           </div>
-          <span className="text-xs text-gray-500 font-medium">
-            {completedSubtasks}/{task.subtasks.length}
-          </span>
-        </div>
-      )}
+        ) : (
+          <div className="h-3" />
+        )}
+      </div>
 
       {/* Tags */}
       {task.tags.length > 0 && (

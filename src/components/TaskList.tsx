@@ -54,35 +54,72 @@ const TaskList: React.FC<TaskListProps> = ({ tasks, onTaskClick }) => {
   
   return (
     <div className="bg-white rounded-lg border border-gray-200">
-      <div className="grid grid-cols-12 px-4 py-3 text-xs font-semibold text-gray-500 border-b">
-        <div className="col-span-6">{t('tasks.taskTitle')}</div>
+      {/* Desktop header */}
+      <div className="hidden md:grid grid-cols-12 px-4 py-3 text-xs font-semibold text-gray-500 border-b">
+        <div className="col-span-5">{t('tasks.taskTitle')}</div>
+        <div className="col-span-3">Proyecto</div>
         <div className="col-span-2">{t('tasks.assignee')}</div>
-        <div className="col-span-2">{t('tasks.dueDate')}</div>
-        <div className="col-span-2">{t('tasks.status')}</div>
+        <div className="col-span-1">{t('tasks.dueDate')}</div>
+        <div className="col-span-1">{t('tasks.status')}</div>
       </div>
       <ul className="divide-y">
         {tasks.map(task => (
           <li
             key={task.id}
-            className="grid grid-cols-12 px-4 py-3 hover:bg-gray-50 cursor-pointer"
+            className="px-4 py-3 hover:bg-gray-50 cursor-pointer"
             onClick={() => onTaskClick(task)}
           >
-            <div className="col-span-6 flex items-center gap-2">
-              <Tooltip text={getPriorityTranslation(task.priority)}>
-                <Flag className={`w-4 h-4 ${priorityColor[task.priority]}`} fill="currentColor" />
-              </Tooltip>
-              <span className="text-sm text-gray-900 line-clamp-1">{task.title}</span>
+            {/* Mobile card (compact 1-2 filas) */}
+            <div className="md:hidden">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <Tooltip text={getPriorityTranslation(task.priority)}>
+                      <Flag className={`w-4 h-4 ${priorityColor[task.priority]}`} fill="currentColor" />
+                    </Tooltip>
+                    <span className="text-sm text-gray-900 font-medium truncate">
+                      {task.title}
+                    </span>
+                  </div>
+                  <div className="mt-1 text-xs text-gray-500 flex items-center gap-2">
+                    <span className="truncate max-w-[60%]">{task.assignee ? task.assignee.name : '-'}</span>
+                    <span>·</span>
+                    <span>{task.dueDate ? formatDateForDisplay(task.dueDate) : '-'}</span>
+                  </div>
+                </div>
+                <span className={`shrink-0 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium capitalize ${statusBadge[task.status]}`}>
+                  {getTaskStatusTranslation(task.status)}
+                </span>
+              </div>
             </div>
-            <div className="col-span-2 text-sm text-gray-600">
-              {task.assignee ? task.assignee.name : '-'}
-            </div>
-            <div className="col-span-2 text-sm text-gray-600">
-              {task.dueDate ? formatDateForDisplay(task.dueDate) : '-'}
-            </div>
-            <div className="col-span-2">
-              <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium capitalize ${statusBadge[task.status]}`}>
-                {getTaskStatusTranslation(task.status)}
-              </span>
+
+            {/* Desktop row */}
+            <div className="hidden md:grid grid-cols-12">
+              <div className="col-span-5 flex items-center gap-2">
+                <Tooltip text={getPriorityTranslation(task.priority)}>
+                  <Flag className={`w-4 h-4 ${priorityColor[task.priority]}`} fill="currentColor" />
+                </Tooltip>
+                <span className="text-sm text-gray-900 line-clamp-1">{task.title}</span>
+              </div>
+              <div className="col-span-3 text-sm text-gray-700 truncate">
+                {(task as any).projectName ? (
+                  <span className="inline-flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: (task as any).projectColor || '#9CA3AF' }} />
+                    <span className="truncate max-w-[220px]">{(task as any).projectName}</span>
+                  </span>
+                ) : '—'}
+              </div>
+              <div className="col-span-2 text-sm text-gray-600 truncate">
+                {task.assignee ? task.assignee.name : '-'}
+              </div>
+              <div className="col-span-1 text-sm text-gray-600">
+                {task.dueDate ? formatDateForDisplay(task.dueDate) : '-'}
+              </div>
+              <div className="col-span-1">
+                <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium capitalize ${statusBadge[task.status]}`}>
+                  {getTaskStatusTranslation(task.status)}
+                </span>
+              </div>
             </div>
           </li>
         ))}

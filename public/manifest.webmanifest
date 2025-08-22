@@ -1,0 +1,17 @@
+{
+  "name": "Páramo Creativo",
+  "short_name": "Páramo",
+  "description": "Gestión inteligente de proyectos de Páramo Creativo",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#12173b",
+  "icons": [
+    {
+      "src": "/branding/favicon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

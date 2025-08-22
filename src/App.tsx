@@ -9,21 +9,23 @@ import TaskView from './components/TaskView';
 import ProjectHub from './components/ProjectHub';
 import Team from './components/Team';
 import SubscriptionDashboard from './components/SubscriptionDashboard';
-import ApprovalCenter from './components/ApprovalCenter';
+// import ApprovalCenter from './components/ApprovalCenter';
 import LoginModal from './components/LoginModal';
 import SettingsModal from './components/SettingsModal';
 import NotificationsModal from './components/NotificationsModal';
 import Snackbar from './components/Snackbar';
-import { useProjects, useTasks, useContentItems, useProfiles, usePreferences, useSubscriptions, useComments, useSupabase } from './hooks/useSupabase';
+import { useProjects, useTasks, useProfiles, usePreferences, useSubscriptions, useComments, useSupabase } from './hooks/useSupabase';
 import { useContent } from './hooks/useContent';
 import { useStorage } from './hooks/useStorage';
 import { useAuth } from './hooks/useAuth';
 import { useTranslation } from './hooks/useTranslation';
-import { convertSupabaseProjectToProject, convertSupabaseTaskToTask, convertSupabaseContentItemToContentItem } from './utils/typeConverters';
+import { convertSupabaseProjectToProject, convertSupabaseTaskToTask } from './utils/typeConverters';
 import { formatDateForSupabase } from './utils/dateUtils';
-import { Project, Task, ContentItem, User, TaskStatus, Client, Approval, TaskFilter, Subscription, TaskFile } from './types';
+import { Project, Task, ContentItem, User, TaskStatus, TaskFilter, Subscription, TaskFile } from './types';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import ContentCalendar from './components/ContentCalendar';
+import FinancesDashboard from './components/FinancesDashboard';
+import TransactionsList from './components/TransactionsList.tsx';
 import TaskList from './components/TaskList';
 import SupabaseErrorComponent from './components/SupabaseError';
 import TaskReviewModal from './components/TaskReviewModal';
@@ -33,19 +35,17 @@ import ContentViewModal from './components/ContentViewModal';
 import EditContentModal from './components/EditContentModal';
 import DeleteContentConfirmationModal from './components/DeleteContentConfirmationModal';
 import ArchivedTasksView from './components/ArchivedTasksView';
-import ProfileEditModal from './components/ProfileEditModal';
 import { 
-  mockUsers, 
-  mockClients, 
-  mockApprovals 
+  mockUsers 
 } from './data/mockData';
+import BottomNav from './components/BottomNav';
 
 function App() {
   // Hooks de Supabase
   const { projects: supabaseProjects, loading: projectsLoading, error: projectsError, createProject, updateProject } = useProjects();
   const { tasks: supabaseTasks, loading: tasksLoading, error: tasksError, createTask, updateTask, deleteTask, updateSubtaskPositions, createSubtask, updateSubtask, deleteSubtask, setLocalTasks } = useTasks();
   const { addComment } = useComments();
-  const { t } = useTranslation();
+  const { getTaskStatusTranslation } = useTranslation();
 
   const { profiles: supabaseProfiles, loading: profilesLoading, error: profilesError, updateProfile } = useProfiles();
   const { fetchPreferencesForUser, upsertPreferences } = usePreferences();
@@ -82,8 +82,7 @@ function App() {
   
   const [users] = useLocalStorage<User[]>('pm_users', mockUsers);
 
-  const [clients] = useLocalStorage<Client[]>('pm_clients', mockClients);
-  const [approvals, setApprovals] = useLocalStorage<Approval[]>('pm_approvals', mockApprovals);
+  // const [clients] = useLocalStorage<Client[]>('pm_clients', mockClients);
   
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<string>('tasks');
@@ -107,6 +106,7 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<TaskFilter>({});
   const [taskView, setTaskView] = useState<'board' | 'list'>('board');
+  const [statusTab, setStatusTab] = useState<'todo' | 'in-progress' | 'review' | 'done'>('todo');
 
   // Cargar preferencias del usuario al iniciar sesión
   useEffect(() => {
@@ -143,7 +143,15 @@ function App() {
 
   // Convert Supabase data to app format
   const tasks = useMemo(() => {
-    const base = supabaseTasks.map(task => convertSupabaseTaskToTask(task, supabaseProfiles));
+    const base = supabaseTasks.map(task => {
+      const converted: any = convertSupabaseTaskToTask(task, supabaseProfiles);
+      const prj = supabaseProjects.find(p => p.id === task.project_id);
+      if (prj) {
+        converted.projectName = prj.name;
+        converted.projectColor = prj.color;
+      }
+      return converted as Task;
+    });
     return base.map(t => {
       const order = subtaskOrderByTaskId[t.id];
       if (!order || order.length === 0 || !t.subtasks?.length) return t;
@@ -155,20 +163,27 @@ function App() {
       const remaining = t.subtasks.filter(s => !order.includes(s.id));
       return { ...t, subtasks: [...ordered, ...remaining] };
     });
-  }, [supabaseTasks, supabaseProfiles, subtaskOrderByTaskId]);
+  }, [supabaseTasks, supabaseProfiles, subtaskOrderByTaskId, supabaseProjects]);
 
   const projects = useMemo(() => {
     return supabaseProjects.map(project => {
       const projectTasks = tasks.filter(task => task.projectId === project.id);
       const completedTasks = projectTasks.filter(task => task.status === 'done').length;
-      
+
+      const base = convertSupabaseProjectToProject(project);
+      const leadProfile = supabaseProfiles.find(p => p.id === (project as any).project_lead_id);
+      const projectLead = leadProfile
+        ? { id: leadProfile.id, name: leadProfile.name, email: leadProfile.user_id, avatar: leadProfile.avatar || '', role: leadProfile.role }
+        : undefined;
+
       return {
-        ...convertSupabaseProjectToProject(project),
+        ...base,
+        projectLead,
         taskCount: projectTasks.length,
         completedTasks: completedTasks
       };
     });
-  }, [supabaseProjects, tasks]);
+  }, [supabaseProjects, tasks, supabaseProfiles]);
 
   const contentItems = useMemo(() => {
     return newContentItems;
@@ -186,9 +201,17 @@ function App() {
   const filteredTasks = useMemo(() => {
     let filtered = tasks;
 
+    // Always exclude archived tasks from this view
+    filtered = filtered.filter(task => task.status !== 'archived');
+
     // Filter by project
     if (selectedProjectId) {
       filtered = filtered.filter(task => task.projectId === selectedProjectId);
+    }
+    // Filter by multi-project selection when viewing all tasks
+    if (!selectedProjectId && filter.project?.length) {
+      const allowed = new Set(filter.project)
+      filtered = filtered.filter(task => allowed.has(task.projectId))
     }
 
     // Search filter
@@ -261,6 +284,43 @@ function App() {
 
     return filtered;
   }, [tasks, selectedProjectId, searchQuery, filter]);
+
+  const tabbedTasks = useMemo(() => {
+    return filteredTasks.filter(task => task.status === statusTab);
+  }, [filteredTasks, statusTab]);
+
+  const statusCounts = useMemo(() => {
+    const counts: Record<'todo' | 'in-progress' | 'review' | 'done', number> = {
+      'todo': 0,
+      'in-progress': 0,
+      'review': 0,
+      'done': 0,
+    };
+    for (const task of filteredTasks) {
+      if (task.status in counts) counts[task.status as keyof typeof counts]++;
+    }
+    return counts;
+  }, [filteredTasks]);
+
+  const renderStatusTabs = () => (
+    <div className="mb-3 md:mb-4 md:hidden">
+      <div className="flex gap-2 overflow-auto no-scrollbar">
+        {(['todo','in-progress','review','done'] as const).map(s => {
+          const active = statusTab === s;
+          return (
+            <button
+              key={s}
+              onClick={() => setStatusTab(s)}
+              className={`px-3 py-1.5 rounded-full text-sm border whitespace-nowrap ${active ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}
+            >
+              {getTaskStatusTranslation(s)}
+              <span className={`ml-2 inline-block text-xs rounded-full px-1.5 ${active ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'}`}>{statusCounts[s]}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
 
   // Task management functions
   const handleCreateTask = () => {
@@ -974,18 +1034,7 @@ function App() {
     }
   };
 
-  const handleApprovalAction = (approvalId: string, action: 'approve' | 'reject', feedback?: string) => {
-    setApprovals(prev => prev.map(approval => 
-      approval.id === approvalId 
-        ? { 
-            ...approval, 
-            status: action === 'approve' ? 'approved' : 'changes-requested',
-            feedback: feedback || approval.feedback,
-            respondedAt: new Date()
-          } as Approval
-        : approval
-    ));
-  };
+  // approvals removed
 
   // Funciones para manejar suscripciones
   const handleAddSubscription = async (subscriptionData: Omit<Subscription, 'id' | 'createdAt' | 'updatedAt'>) => {
@@ -1095,8 +1144,8 @@ function App() {
       );
     }
 
-    // Si hay un proyecto seleccionado, mostrar ProjectHub
-    if (selectedProjectId && currentProject) {
+    // Si hay un proyecto seleccionado y estamos en vista de tareas, mostrar ProjectHub
+    if (selectedProjectId && currentProject && activeView === 'tasks') {
       return (
         <ProjectHub
           project={currentProject}
@@ -1154,22 +1203,24 @@ function App() {
             onUpdateCredentials={handleUpdateCredentials}
           />
         );
-      case 'approvals':
+      case 'finances':
         return (
-          <ApprovalCenter
-            approvals={approvals}
-            contentItems={contentItems}
-            clients={clients}
-            users={users}
-            onApprovalAction={handleApprovalAction}
+          <FinancesDashboard
+            openingBalance={0}
+            baseCurrency={Intl.NumberFormat().resolvedOptions().currency || 'USD'}
+            transactions={[]}
           />
         );
+      case 'finances-transactions':
+        return (
+          <TransactionsList />
+        );
+      // approvals removed
       case 'team':
         return <Team />;
       case 'archived':
         return (
           <ArchivedTasksView 
-            currentUser={users[0]} 
             tasks={tasks}
             projects={projects}
             onUpdateTask={handleUpdateTask}
@@ -1180,10 +1231,13 @@ function App() {
         );
       default:
         return taskView === 'list' ? (
-          <TaskList
-            tasks={filteredTasks}
-            onTaskClick={handleViewTask}
-          />
+          <>
+            {renderStatusTabs()}
+            <TaskList
+              tasks={tabbedTasks}
+              onTaskClick={handleViewTask}
+            />
+          </>
         ) : (
           <TaskBoard
             tasks={filteredTasks}
@@ -1202,20 +1256,22 @@ function App() {
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Sidebar */}
-              <Sidebar
-          projects={projects}
-          currentUser={users[0]}
-          authenticatedUser={user}
-          selectedProject={selectedProjectId}
-          activeView={activeView}
-          onSelectProject={setSelectedProjectId}
-          onViewChange={setActiveView}
-          onCreateProject={handleCreateProject}
-          onOpenSettings={handleOpenSettings}
-          onOpenNotifications={handleOpenNotifications}
-          profileName={supabaseProfiles.find(p => p.user_id === user?.id)?.name}
-          userAvatar={currentUserProfile?.avatar}
-        />
+      <div className="hidden md:block">
+      <Sidebar
+        projects={projects}
+        currentUser={users[0]}
+        authenticatedUser={user}
+        selectedProject={selectedProjectId}
+        activeView={activeView}
+        onSelectProject={setSelectedProjectId}
+        onViewChange={setActiveView}
+        onCreateProject={handleCreateProject}
+        onOpenSettings={handleOpenSettings}
+        onOpenNotifications={handleOpenNotifications}
+        profileName={supabaseProfiles.find(p => p.user_id === user?.id)?.name}
+        userAvatar={currentUserProfile?.avatar}
+      />
+      </div>
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
@@ -1231,6 +1287,7 @@ function App() {
             taskView={taskView}
             onTaskViewChange={handleTaskViewChange}
             assignees={supabaseProfiles}
+            projects={projects}
           />
         )}
 
@@ -1275,11 +1332,38 @@ function App() {
           </div>
         )}
 
-        {/* Main Content Area */}
-        <div className={`flex-1 overflow-auto ${selectedProjectId ? '' : (activeView === 'tasks' ? 'p-6' : '')}`}>
-          {renderMainContent()}
+        {/* Vista principal: en móvil forzar lista */}
+        <div className="flex-1 overflow-auto">
+          <div className="md:hidden">
+            {activeView === 'tasks' ? (
+              <div className="p-3">
+                {renderStatusTabs()}
+                <TaskList tasks={tabbedTasks} onTaskClick={handleViewTask} />
+              </div>
+            ) : (
+              renderMainContent()
+            )}
+          </div>
+          <div className="hidden md:block">
+            {/* Secciones con header consistente no necesitan padding, incluyendo ProjectHub */}
+            {(activeView === 'subscriptions' || activeView === 'finances-transactions' || activeView === 'team' || activeView === 'archived' || (selectedProjectId && currentProject && activeView === 'tasks')) ? (
+              renderMainContent()
+            ) : (
+              <div className="p-6">
+                {renderMainContent()}
+              </div>
+            )}
+          </div>
         </div>
+
       </div>
+
+      {/* Bottom Navigation (mobile) */}
+      <BottomNav
+        activeView={activeView}
+        onViewChange={setActiveView}
+        onCreateTask={handleCreateTask}
+      />
 
       {/* Project Selection Modal */}
       <ProjectSelectionModal
@@ -1312,7 +1396,7 @@ function App() {
           setSelectedProject(undefined);
         }}
         onSave={handleSaveProject}
-        users={users}
+        users={selectableUsers}
       />
 
       {/* Task View Modal */}

@@ -168,6 +168,7 @@ interface HeaderProps {
   taskView?: 'board' | 'list';
   onTaskViewChange?: (view: 'board' | 'list') => void;
   assignees?: SupabaseProfile[];
+  projects?: Project[];
 }
 
 const Header: React.FC<HeaderProps> = ({
@@ -180,10 +181,13 @@ const Header: React.FC<HeaderProps> = ({
   taskView = 'board',
   onTaskViewChange,
   assignees = [],
+  projects = [],
 }) => {
   const { t, getTaskStatusTranslation, getPriorityTranslation } = useTranslation();
   const [activePanel, setActivePanel] = React.useState<null | 'filter' | 'sort' | 'assignee' | 'due'>(null)
+  const [isMobileFilterOpen, setIsMobileFilterOpen] = React.useState(false)
   //
+  const allProjectsLabel = `${t('common.all')} ${t('navigation.projects').toLowerCase()}`
 
   const toggleValueInArray = <T,>(arr: T[] | undefined, val: T): T[] => {
     const base = arr || []
@@ -229,6 +233,9 @@ const Header: React.FC<HeaderProps> = ({
   const handleAssigneesChange = (ids: string[]) => {
     onFilterChange({ ...filter, assignee: ids })
   }
+  const handleProjectsChange = (ids: string[]) => {
+    onFilterChange({ ...filter, project: ids })
+  }
   const togglePanel = (panel: 'filter' | 'sort' | 'assignee' | 'due') => {
     setActivePanel(prev => (prev === panel ? null : panel))
   }
@@ -251,14 +258,15 @@ const Header: React.FC<HeaderProps> = ({
     (filter.status && filter.status.length) ||
     (filter.priority && filter.priority.length) ||
     (filter.assignee && filter.assignee.length) ||
+    (filter.project && filter.project.length) ||
     filter.dueFrom || filter.dueTo || filter.overdue || filter.sortBy || filter.sortDir
   )
   const clearAllFilters = () => { onFilterChange({}) }
 
   return (
-    <div className="bg-white border-b border-gray-200 px-6 py-4">
+    <div className="bg-white border-b border-gray-200 px-4 md:px-6 py-3 md:py-4">
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-3 md:space-x-4">
           {/* Project Title */}
           <div className="flex items-center space-x-3">
             {selectedProject && (
@@ -280,12 +288,21 @@ const Header: React.FC<HeaderProps> = ({
               placeholder={t('tasks.searchTasks')}
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
-              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64"
+              className="pl-10 pr-10 md:pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-52 md:w-64"
             />
+            {/* Mobile filter open button */}
+            <button
+              type="button"
+              onClick={() => setIsMobileFilterOpen(true)}
+              className="md:hidden absolute right-2 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-900"
+              aria-label="Open filters"
+            >
+              <Filter className="w-4 h-4" />
+            </button>
           </div>
         </div>
 
-        <div className="flex items-center space-x-3">
+        <div className="hidden md:flex items-center space-x-3">
           {/* View toggle */}
           <div className="flex items-center rounded-lg border border-gray-200 overflow-hidden">
             <button
@@ -361,6 +378,12 @@ const Header: React.FC<HeaderProps> = ({
             {filter.assignee?.map(a => (
               <button key={`a-${a}`} onClick={() => onFilterChange({ ...filter, assignee: (filter.assignee||[]).filter(x => x !== a) })} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs bg-gray-100 text-gray-700">
                 {getAssigneeName(a)}
+                <X className="w-3 h-3" />
+              </button>
+            ))}
+            {filter.project?.map(p => (
+              <button key={`pr-${p}`} onClick={() => onFilterChange({ ...filter, project: (filter.project||[]).filter(x => x !== p) })} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs bg-gray-50 text-gray-700 border border-gray-200">
+                {projects?.find(pp => pp.id === p)?.name || 'Project'}
                 <X className="w-3 h-3" />
               </button>
             ))}
@@ -523,6 +546,110 @@ const Header: React.FC<HeaderProps> = ({
               )}
             </div>
             <button onClick={() => setActivePanel(null)} className="ml-4 p-2 text-gray-500 hover:text-gray-700"><X className="w-4 h-4" /></button>
+          </div>
+        </div>
+      )}
+
+      {/* Mobile Filter Modal */}
+      {isMobileFilterOpen && (
+        <div className="md:hidden fixed inset-0 z-50">
+          <div className="absolute inset-0 bg-black/30" onClick={() => setIsMobileFilterOpen(false)}></div>
+          <div className="absolute inset-x-0 bottom-0 max-h-[85%] bg-white rounded-t-2xl shadow-xl p-4 overflow-auto">
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-base font-semibold text-gray-900">{t('tasks.filter')}</h2>
+              <button onClick={() => setIsMobileFilterOpen(false)} className="p-2 text-gray-500"><X className="w-5 h-5"/></button>
+            </div>
+            <div className="space-y-4">
+              {/* Status */}
+              <div>
+                <div className="text-xs font-semibold text-gray-500 mb-2">{t('tasks.status')}</div>
+                <div className="flex flex-wrap gap-2">
+                  {(['todo','in-progress','corrections','review','done'] as TaskStatus[]).map(s => (
+                    <button key={s} onClick={() => handleToggleStatus(s)} className={statusClass(s, isActive(filter.status as any, s))}>
+                      {getTaskStatusTranslation(s)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {/* Priority */}
+              <div>
+                <div className="text-xs font-semibold text-gray-500 mb-2">{t('tasks.priority')}</div>
+                <div className="flex flex-wrap gap-2">
+                  {(['low','normal','high','urgent'] as TaskPriority[]).map(p => (
+                    <button key={p} onClick={() => handleTogglePriority(p)} className={priorityClass(p, isActive(filter.priority as any, p))}>
+                      {getPriorityTranslation(p)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {/* Assignees */}
+              <div>
+                <div className="text-xs font-semibold text-gray-500 mb-2">{t('tasks.assignee')}</div>
+                <MultiSelectDropdown
+                  values={filter.assignee || []}
+                  onChange={handleAssigneesChange}
+                  options={assignees.map(a => ({ value: a.id, label: a.name, avatar: (a as any).avatar }))}
+                  placeholder="Any"
+                />
+              </div>
+              {/* Projects */}
+              <div>
+                <div className="text-xs font-semibold text-gray-500 mb-2">{t('navigation.projects') || 'Projects'}</div>
+                <MultiSelectDropdown
+                  values={filter.project || []}
+                  onChange={handleProjectsChange}
+                  options={(projects || []).map(p => ({ value: p.id, label: p.name }))}
+                  placeholder={allProjectsLabel}
+                />
+              </div>
+              {/* Due range */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1">{t('tasks.dueFrom')}</label>
+                  <DateWrapper>
+                    <input type="date" className="appearance-none w-full rounded-lg border border-gray-200 bg-white pl-9 pr-3 py-2 text-sm text-gray-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" value={filter.dueFrom || ''} onChange={(e) => onFilterChange({ ...filter, dueFrom: e.target.value || undefined })} />
+                  </DateWrapper>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1">{t('tasks.dueTo')}</label>
+                  <DateWrapper>
+                    <input type="date" className="appearance-none w-full rounded-lg border border-gray-200 bg-white pl-9 pr-3 py-2 text-sm text-gray-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" value={filter.dueTo || ''} onChange={(e) => onFilterChange({ ...filter, dueTo: e.target.value || undefined })} />
+                  </DateWrapper>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <input id="overdue-m" type="checkbox" checked={!!filter.overdue} onChange={handleToggleOverdue} className="rounded border-gray-300" />
+                <label htmlFor="overdue-m" className="text-sm text-gray-700">{t('tasks.overdueOnly')}</label>
+              </div>
+              {/* Sort */}
+              <div>
+                <div className="text-xs font-semibold text-gray-500 mb-1">{t('tasks.sortBy')}</div>
+                <SingleSelectDropdown
+                  value={filter.sortBy}
+                  onChange={(val) => onFilterChange({ ...filter, sortBy: (val || undefined) as any })}
+                  options={[
+                    { value: '', label: t('tasks.default'), icon: <ListChecks className="w-4 h-4 text-gray-400"/> },
+                    { value: 'dueDate', label: t('tasks.dueDate'), icon: <Clock className="w-4 h-4 text-gray-400"/> },
+                    { value: 'priority', label: t('tasks.priority'), icon: <Flag className="w-4 h-4 text-gray-400"/> },
+                    { value: 'status', label: t('tasks.status'), icon: <List className="w-4 h-4 text-gray-400"/> },
+                    { value: 'createdAt', label: t('tasks.created'), icon: <Clock className="w-4 h-4 text-gray-400"/> },
+                    { value: 'title', label: t('tasks.title'), icon: <Type className="w-4 h-4 text-gray-400"/> },
+                  ]}
+                  placeholder={t('tasks.default')}
+                />
+                <div className="mt-2 inline-flex items-center gap-2">
+                  <span className={`px-2 py-1 rounded-md text-xs ${(!filter.sortDir || filter.sortDir==='asc') ? 'bg-blue-50 text-blue-700' : 'text-gray-600'}`}>ABC</span>
+                  <button type="button" onClick={() => onFilterChange({ ...filter, sortDir: (filter.sortDir === 'desc' ? 'asc' : 'desc') })} className="relative inline-flex h-7 w-12 items-center rounded-full bg-gray-200 transition-colors hover:bg-gray-300" aria-label="Toggle direction">
+                    <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${filter.sortDir === 'desc' ? 'translate-x-6' : 'translate-x-1'}`}></span>
+                  </button>
+                  <span className={`px-2 py-1 rounded-md text-xs ${(filter.sortDir==='desc') ? 'bg-blue-50 text-blue-700' : 'text-gray-600'}`}>ZYX</span>
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button onClick={() => onFilterChange({})} className="px-3 py-2 text-sm rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50">{t('tasks.reset')}</button>
+                <button onClick={() => setIsMobileFilterOpen(false)} className="px-3 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700">{t('tasks.apply')}</button>
+              </div>
+            </div>
           </div>
         </div>
       )}

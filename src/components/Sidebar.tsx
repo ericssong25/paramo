@@ -2,13 +2,10 @@ import React from 'react';
 import { 
   Plus, 
   Users, 
-  Calendar, 
   Settings,
-  Search,
   Home,
   CreditCard,
   Image,
-  CheckSquare,
   TrendingUp,
   Bell,
   Archive
@@ -47,6 +44,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   userAvatar,
 }) => {
   const { t } = useTranslation();
+  const isFinancesSection = activeView === 'finances' || activeView === 'finances-transactions';
   // Truncar texto
   const truncateText = (text: string, maxLength: number) => {
     if (!text) return '';
@@ -75,7 +73,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   );
 
   return (
-    <div className="w-64 bg-white border-r border-gray-200 flex flex-col">
+    <div className="w-64 bg-white border-r border-gray-200 flex flex-col h-screen overflow-hidden">
       {/* User Profile */}
       <div className="p-4 border-b border-gray-200">
         <div className="flex items-center justify-between">
@@ -155,32 +153,37 @@ const Sidebar: React.FC<SidebarProps> = ({
             <span className="text-sm font-medium">{t('navigation.subscriptions')}</span>
           </button>
 
-          <button 
-            onClick={() => onViewChange('approvals')}
-            className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors ${
-              activeView === 'approvals'
-                ? 'bg-blue-50 text-blue-700'
-                : 'text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            <CheckSquare className="w-4 h-4" />
-            <span className="text-sm font-medium">{t('navigation.approvals')}</span>
-          </button>
+          {/* approvals and global search removed */}
 
-          <button className="w-full flex items-center space-x-3 px-3 py-2 text-gray-700 rounded-lg hover:bg-gray-50 text-left transition-colors">
-            <Search className="w-4 h-4" />
-            <span className="text-sm font-medium">{t('navigation.search')}</span>
-          </button>
+          <div>
+            <button 
+              onClick={() => onViewChange('finances')}
+              className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition-colors ${
+                isFinancesSection
+                  ? 'bg-blue-50 text-blue-700'
+                  : 'text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <span className="flex items-center space-x-3">
+                <TrendingUp className="w-4 h-4" />
+                <span className="text-sm font-medium">{t('navigation.finances')}</span>
+              </span>
+            </button>
+            {isFinancesSection && (
+              <div className="mt-1 pl-8 space-y-1">
+                <button
+                  onClick={() => onViewChange('finances-transactions')}
+                  className={`w-full text-left px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                    activeView === 'finances-transactions' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  Transacciones
+                </button>
+              </div>
+            )}
+          </div>
 
-          <button className="w-full flex items-center space-x-3 px-3 py-2 text-gray-700 rounded-lg hover:bg-gray-50 text-left transition-colors">
-            <Calendar className="w-4 h-4" />
-            <span className="text-sm font-medium">{t('navigation.calendar')}</span>
-          </button>
-
-          <button className="w-full flex items-center space-x-3 px-3 py-2 text-gray-700 rounded-lg hover:bg-gray-50 text-left transition-colors">
-            <TrendingUp className="w-4 h-4" />
-            <span className="text-sm font-medium">{t('navigation.analytics')}</span>
-          </button>
+          {/* analytics removed */}
 
           <button 
             onClick={() => { onSelectProject(null); onViewChange('team'); }}
@@ -226,7 +229,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             {projects.map((project) => (
               <button
                 key={project.id}
-                onClick={() => onSelectProject(project.id)}
+                onClick={() => { onSelectProject(project.id); onViewChange('tasks'); }}
                 className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors group ${
                   selectedProject === project.id
                     ? 'bg-blue-50 text-blue-700'

@@ -258,7 +258,7 @@ const TaskModal: React.FC<TaskModalProps> = ({
                 />
               </div>
 
-              {/* Priority, Status, Assignee, Due Date */}
+              {/* Priority, Assignee, Due Date, Project */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -276,8 +276,6 @@ const TaskModal: React.FC<TaskModalProps> = ({
                     <option value="urgent">Urgent</option>
                   </select>
                 </div>
-
-
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -301,6 +299,14 @@ const TaskModal: React.FC<TaskModalProps> = ({
                     }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
+                </div>
+                
+                {/* Project (solo informativo según projectId recibido) */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Proyecto</label>
+                  <div className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-sm text-gray-700">
+                    {(task as any)?.projectName || 'Proyecto actual'}
+                  </div>
                 </div>
               </div>
 

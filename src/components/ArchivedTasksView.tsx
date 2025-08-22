@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Task, User, Project } from '../types';
 import { useTranslation } from '../hooks/useTranslation';
 import { Trash2, Clock, AlertTriangle, RefreshCw, Archive } from 'lucide-react';
+import ConsistentHeader from './ConsistentHeader';
 
 interface ArchivedTasksViewProps {
-  currentUser: User;
   tasks: Task[];
   projects: Project[];
   onUpdateTask: (taskId: string, updates: any) => Promise<void>;
@@ -14,7 +14,6 @@ interface ArchivedTasksViewProps {
 }
 
 const ArchivedTasksView: React.FC<ArchivedTasksViewProps> = ({ 
-  currentUser, 
   tasks, 
   projects, 
   onUpdateTask, 
@@ -36,18 +35,10 @@ const ArchivedTasksView: React.FC<ArchivedTasksViewProps> = ({
 
   // Función para calcular días desde que fue archivada
   const getDaysSinceArchived = (task: Task): number => {
-    console.log('🔍 Task:', task.title);
-    console.log('🔍 archivedAt:', task.archivedAt);
-    console.log('🔍 updatedAt:', task.updatedAt);
-    
     const archivedDate = task.archivedAt || new Date(task.updatedAt);
-    console.log('🔍 archivedDate usado:', archivedDate);
-    
     const now = new Date();
     const diffTime = Math.abs(now.getTime() - archivedDate.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    console.log('🔍 diffDays calculado:', diffDays);
     return diffDays;
   };
 
@@ -75,7 +66,6 @@ const ArchivedTasksView: React.FC<ArchivedTasksViewProps> = ({
       setArchivedTasks(prev => prev.filter(task => getDaysSinceArchived(task) <= 30));
       
     } catch (error) {
-      console.error('Error cleaning up archived tasks:', error);
       setCleanupMessage('Error al eliminar tareas automáticamente');
     } finally {
       setIsCleaningUp(false);
@@ -87,7 +77,7 @@ const ArchivedTasksView: React.FC<ArchivedTasksViewProps> = ({
     try {
       await onUpdateTask(taskId, { status: 'todo' } as any);
     } catch (error) {
-      console.error('Error restoring task:', error);
+      // no-op
     }
   };
 
@@ -96,19 +86,14 @@ const ArchivedTasksView: React.FC<ArchivedTasksViewProps> = ({
     try {
       await onDeleteTask(taskId);
     } catch (error) {
-      console.error('Error deleting archived task:', error);
+      // no-op
     }
   };
 
   // Obtener nombre del proyecto
   const getProjectName = (projectId: string): string => {
-    console.log('🔍 getProjectName - projectId:', projectId);
-    console.log('🔍 getProjectName - projects disponibles:', projects.map(p => ({ id: p.id, name: p.name })));
-    
     if (!projectId) return 'Sin proyecto';
     const project = projects.find(p => p.id === projectId);
-    console.log('🔍 getProjectName - proyecto encontrado:', project);
-    
     return project?.name || 'Sin proyecto';
   };
 
@@ -134,17 +119,15 @@ const ArchivedTasksView: React.FC<ArchivedTasksViewProps> = ({
   }
 
   return (
-    <div className="p-6">
-      {/* Header */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              {t('navigation.archivedTasks')}
-            </h1>
-            <p className="text-gray-600 mt-1">
-              {archivedTasks.length} {archivedTasks.length === 1 ? 'tarea archivada' : 'tareas archivadas'}
-            </p>
+    <div className="h-full flex flex-col">
+      <ConsistentHeader
+        title={t('navigation.archivedTasks')}
+        showSearch={false}
+        showCreateButton={false}
+      >
+        <div className="flex items-center space-x-4">
+          <div className="text-sm text-gray-600">
+            {archivedTasks.length} {archivedTasks.length === 1 ? 'tarea archivada' : 'tareas archivadas'}
           </div>
           
           <button
@@ -160,6 +143,9 @@ const ArchivedTasksView: React.FC<ArchivedTasksViewProps> = ({
             <span>Limpiar automáticamente</span>
           </button>
         </div>
+      </ConsistentHeader>
+
+      <div className="flex-1 overflow-auto p-6">
 
         {/* Mensaje de limpieza */}
         {cleanupMessage && (

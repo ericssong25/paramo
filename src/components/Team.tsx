@@ -1,6 +1,6 @@
 import React from 'react'
 import { useProfiles } from '../hooks/useSupabase'
-import { Search } from 'lucide-react'
+import ConsistentHeader from './ConsistentHeader'
 
 const Team: React.FC = () => {
   const { profiles, loading } = useProfiles()
@@ -14,21 +14,15 @@ const Team: React.FC = () => {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="px-6 py-4 border-b border-gray-200 bg-white w-full">
-        <h1 className="text-2xl font-bold text-gray-900 mb-4">Team</h1>
-        <div className="relative w-full max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search by name..."
-            className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
-        </div>
-      </div>
+      <ConsistentHeader
+        title="Equipo"
+        searchQuery={query}
+        onSearchChange={setQuery}
+        searchPlaceholder="Buscar por nombre..."
+        showCreateButton={false}
+      />
 
-      <div className="flex-1 p-6 overflow-auto">
+             <div className="flex-1 overflow-auto p-6">
         {loading ? (
           <div className="text-gray-500">Loading...</div>
         ) : (
