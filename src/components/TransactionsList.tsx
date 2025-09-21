@@ -2,16 +2,21 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import TransactionDetailModal from './TransactionDetailModal';
 import ConsistentHeader from './ConsistentHeader';
+import { useBusinessWallets } from '../hooks/useBusinessWallets';
 
 type Tx = {
   id: string;
-  type: 'income' | 'expense';
+  type: 'income' | 'expense' | 'transfer';
   amount: number;
   currency: string;
   date: string;
   status: 'pending' | 'cleared' | 'reconciled';
+  notes?: string;
   project_id?: string | null;
   projects?: { name: string; color: string } | null;
+  wallet_id?: string | null;
+  from_wallet_id?: string | null;
+  to_wallet_id?: string | null;
 };
 
 const TransactionsList: React.FC = () => {
@@ -20,11 +25,14 @@ const TransactionsList: React.FC = () => {
   const [selected, setSelected] = useState<Tx | null>(null);
   const [q, setQ] = useState('');
   const [status, setStatus] = useState<'all' | 'pending' | 'cleared' | 'reconciled'>('all');
-  const [type, setType] = useState<'all' | 'income' | 'expense'>('all');
+  const [type, setType] = useState<'all' | 'income' | 'expense' | 'transfer'>('all');
   const [project, setProject] = useState<string>('all');
   const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
+  
+  // Hook para obtener nombres de wallets
+  const { getWalletDisplayName } = useBusinessWallets();
 
   useEffect(() => {
     (async () => {
@@ -32,7 +40,7 @@ const TransactionsList: React.FC = () => {
         setLoading(true);
         const { data, error } = await supabase
           .from('transactions')
-          .select('id, type, amount, currency, date, status, project_id, projects(name, color)')
+          .select('id, type, amount, currency, date, status, notes, project_id, wallet_id, from_wallet_id, to_wallet_id, projects(name, color)')
           .order('date', { ascending: false })
           .limit(500);
         if (error) throw error;
@@ -86,6 +94,7 @@ const TransactionsList: React.FC = () => {
           <option value="all">Tipo: Todos</option>
           <option value="income">Ingreso</option>
           <option value="expense">Egreso</option>
+          <option value="transfer">Transferencia</option>
         </select>
         <select value={project} onChange={(e) => setProject(e.target.value)} className="border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
           <option value="all">Proyecto: Todos</option>
@@ -142,11 +151,21 @@ const TransactionsList: React.FC = () => {
                     <tr key={r.id} className="text-sm cursor-pointer hover:bg-gray-50 transition-colors duration-150" onClick={() => setSelected(r)}>
                       <td className="px-6 py-4 text-gray-700 whitespace-nowrap">{new Date(r.date + 'T00:00:00').toLocaleDateString()}</td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${r.type==='income' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}>
-                          {r.type==='income' ? 'Ingreso' : 'Egreso'}
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          r.type === 'income' ? 'bg-emerald-100 text-emerald-800' : 
+                          r.type === 'transfer' ? 'bg-blue-100 text-blue-800' :
+                          'bg-red-100 text-red-800'
+                        }`}>
+                          {r.type === 'income' ? 'Ingreso' : 
+                           r.type === 'transfer' ? 'Transferencia' : 
+                           'Egreso'}
                         </span>
                       </td>
-                      <td className={`px-6 py-4 font-semibold whitespace-nowrap text-right ${r.type==='income' ? 'text-emerald-700' : 'text-red-700'}`}>
+                      <td className={`px-6 py-4 font-semibold whitespace-nowrap text-right ${
+                        r.type === 'income' ? 'text-emerald-700' : 
+                        r.type === 'transfer' ? 'text-blue-700' :
+                        'text-red-700'
+                      }`}>
                         {new Intl.NumberFormat(undefined, { style: 'currency', currency: r.currency }).format(r.amount)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -261,8 +280,15 @@ const TransactionsList: React.FC = () => {
             currency: selected.currency,
             date: new Date(selected.date + 'T00:00:00'),
             status: selected.status,
+            notes: selected.notes,
             projectName: selected.projects?.name || undefined,
             projectColor: selected.projects?.color || undefined,
+            walletId: selected.wallet_id || undefined,
+            walletName: selected.wallet_id ? getWalletDisplayName(selected.wallet_id) : undefined,
+            fromWalletId: selected.from_wallet_id || undefined,
+            fromWalletName: selected.from_wallet_id ? getWalletDisplayName(selected.from_wallet_id) : undefined,
+            toWalletId: selected.to_wallet_id || undefined,
+            toWalletName: selected.to_wallet_id ? getWalletDisplayName(selected.to_wallet_id) : undefined,
           }}
         />
       )}

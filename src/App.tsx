@@ -949,6 +949,8 @@ function App() {
       if (updates.reportingDay !== undefined) supabaseUpdates.reporting_day = updates.reportingDay;
       if (updates.lastPaymentDate !== undefined) supabaseUpdates.last_payment_date = formatDateForSupabase(updates.lastPaymentDate);
       if (updates.paymentDate !== undefined) supabaseUpdates.payment_date = formatDateForSupabase(updates.paymentDate);
+      if (updates.calendarEnds !== undefined) supabaseUpdates.calendar_ends = formatDateForSupabase(updates.calendarEnds);
+      if (updates.strategy !== undefined) supabaseUpdates.strategy = updates.strategy;
       if (updates.monthlyDeliverables !== undefined) supabaseUpdates.monthly_deliverables = updates.monthlyDeliverables;
       if (updates.driveLink !== undefined) supabaseUpdates.drive_link = updates.driveLink;
 

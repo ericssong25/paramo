@@ -4,7 +4,7 @@ import ReactDOM from 'react-dom';
 
 export interface TransactionDetail {
   id: string;
-  type: 'income' | 'expense';
+  type: 'income' | 'expense' | 'transfer';
   amount: number;
   currency: string;
   date: Date;
@@ -12,6 +12,12 @@ export interface TransactionDetail {
   notes?: string;
   projectName?: string;
   projectColor?: string;
+  walletId?: string;
+  walletName?: string;
+  fromWalletId?: string;
+  fromWalletName?: string;
+  toWalletId?: string;
+  toWalletName?: string;
 }
 
 interface Props {
@@ -35,7 +41,15 @@ const TransactionDetailModal: React.FC<Props> = ({ isOpen, onClose, tx, onUpdate
         <div className="p-6 space-y-3 text-sm">
           <div className="flex justify-between">
             <span className="text-gray-500">Tipo</span>
-            <span className={`font-medium ${tx.type==='income' ? 'text-emerald-700' : 'text-red-700'}`}>{tx.type==='income' ? 'Ingreso' : 'Egreso'}</span>
+            <span className={`font-medium ${
+              tx.type === 'income' ? 'text-emerald-700' : 
+              tx.type === 'transfer' ? 'text-blue-700' :
+              'text-red-700'
+            }`}>
+              {tx.type === 'income' ? 'Ingreso' : 
+               tx.type === 'transfer' ? 'Transferencia' : 
+               'Egreso'}
+            </span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-500">Monto</span>
@@ -64,6 +78,32 @@ const TransactionDetailModal: React.FC<Props> = ({ isOpen, onClose, tx, onUpdate
               ) : '—'}
             </span>
           </div>
+          
+          {/* Información de wallets para transferencias */}
+          {tx.type === 'transfer' && (tx.fromWalletId || tx.toWalletId) && (
+            <>
+              {tx.fromWalletId && (
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Wallet Origen</span>
+                  <span className="text-gray-800">{tx.fromWalletName || tx.fromWalletId}</span>
+                </div>
+              )}
+              {tx.toWalletId && (
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Wallet Destino</span>
+                  <span className="text-gray-800">{tx.toWalletName || tx.toWalletId}</span>
+                </div>
+              )}
+            </>
+          )}
+          
+          {/* Wallet para ingresos/egresos */}
+          {tx.type !== 'transfer' && tx.walletId && (
+            <div className="flex justify-between">
+              <span className="text-gray-500">Wallet</span>
+              <span className="text-gray-800">{tx.walletName || tx.walletId}</span>
+            </div>
+          )}
           {tx.notes && (
             <div>
               <div className="text-gray-500 mb-1">Notas</div>

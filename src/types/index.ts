@@ -37,6 +37,8 @@ export interface Project {
   reportingDay?: number; // Día del mes para reportes
   lastPaymentDate?: Date; // Fecha del último pago del cliente
   paymentDate?: Date; // Fecha de pago del cliente
+  calendarEnds?: Date; // Fecha de finalización de la estrategia del calendario
+  strategy?: string; // Enlace a la estrategia del proyecto
   monthlyDeliverables?: any[]; // JSONB en Supabase
   
   // Integración con documentación
@@ -249,6 +251,8 @@ export interface SupabaseProject {
   reporting_day: number | null;
   last_payment_date: string | null;
   payment_date: string | null;
+  calendar_ends: string | null;
+  strategy: string | null;
   monthly_deliverables: any | null;
   drive_link: string | null;
   created_at: string;

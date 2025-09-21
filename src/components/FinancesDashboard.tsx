@@ -1,14 +1,14 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { DollarSign, ArrowDownCircle, ArrowUpCircle, CalendarDays, Plus } from 'lucide-react';
+import { DollarSign, ArrowDownCircle, ArrowUpCircle, CalendarDays, Plus, Wallet, CreditCard, Smartphone, Coins } from 'lucide-react';
 import TransactionModal from './TransactionModal';
-import TransactionDetailModal from './TransactionDetailModal';
 import { supabase } from '../lib/supabase';
+import { useBusinessWallets } from '../hooks/useBusinessWallets';
 
 type Currency = string;
 
 export interface FinanceTransaction {
   id: string;
-  type: 'income' | 'expense';
+  type: 'income' | 'expense' | 'transfer';
   amount: number;
   currency: Currency;
   date: Date;
@@ -16,6 +16,9 @@ export interface FinanceTransaction {
   projectId?: string;
   projectName?: string;
   projectColor?: string;
+  walletId?: string;
+  fromWalletId?: string;
+  toWalletId?: string;
 }
 
 export interface FinancesDashboardProps {
@@ -40,7 +43,9 @@ const FinancesDashboard: React.FC<FinancesDashboardProps> = ({
   const [formStatus, setFormStatus] = useState<'pending' | 'cleared' | 'reconciled'>('pending');
   const [formNotes, setFormNotes] = useState<string>('');
   const [projects, setProjects] = useState<{ id: string; name: string; color: string }[]>([]);
-  const [detailTx, setDetailTx] = useState<FinanceTransaction | null>(null);
+  
+  // Hook para obtener wallets reales
+  const { wallets: businessWallets, loading: walletsLoading, fetchWallets, getWalletDisplayName } = useBusinessWallets();
 
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -54,6 +59,9 @@ const FinancesDashboard: React.FC<FinancesDashboardProps> = ({
     let pendingWithin30d = 0;
 
     for (const tx of localTransactions) {
+      // Solo contar transacciones en USD para estadísticas
+      if (tx.currency !== 'USD') continue;
+      
       const isThisMonth = tx.date >= startOfMonth && tx.date <= now;
       if (isThisMonth) {
         if (tx.type === 'income') incomeThisMonth += tx.amount;
@@ -68,9 +76,15 @@ const FinancesDashboard: React.FC<FinancesDashboardProps> = ({
       }
     }
     return { incomeThisMonth, expenseThisMonth, clearedIncome, clearedExpense, pendingWithin30d };
-  }, [localTransactions]);
+  }, [localTransactions, startOfMonth, now, thirtyDaysAhead]);
 
-  const currentBalance = openingBalance + clearedIncome - clearedExpense;
+  // Calcular saldo actual basado en wallets USD
+  const currentBalance = useMemo(() => {
+    return businessWallets
+      .filter(wallet => wallet.currency === 'USD')
+      .reduce((total, wallet) => total + wallet.current_balance, 0);
+  }, [businessWallets]);
+  
   const projectedBalance = currentBalance + pendingWithin30d;
 
   // Fetch from Supabase on mount
@@ -79,7 +93,7 @@ const FinancesDashboard: React.FC<FinancesDashboardProps> = ({
       try {
         const { data, error } = await supabase
           .from('transactions')
-          .select('id, type, amount, currency, date, status, notes, project_id, projects(name, color)')
+          .select('id, type, amount, currency, date, status, notes, project_id, wallet_id, from_wallet_id, to_wallet_id, projects(name, color)')
           .order('date', { ascending: false })
           .limit(200);
         if (error) throw error;
@@ -94,6 +108,9 @@ const FinancesDashboard: React.FC<FinancesDashboardProps> = ({
           projectId: r.project_id || undefined,
           projectName: r.projects?.name || undefined,
           projectColor: r.projects?.color || undefined,
+          walletId: r.wallet_id || undefined,
+          fromWalletId: r.from_wallet_id || undefined,
+          toWalletId: r.to_wallet_id || undefined,
         }));
         setLocalTransactions(mapped);
       } catch (e) {
@@ -118,7 +135,18 @@ const FinancesDashboard: React.FC<FinancesDashboardProps> = ({
     })();
   }, []);
 
-  const handleSaveModal = async (tx: { type: 'income' | 'expense'; amount: number; currency: string; date: string; status: 'pending' | 'cleared' | 'reconciled'; notes?: string; projectId?: string; }) => {
+  const handleSaveModal = async (tx: { 
+    type: 'income' | 'expense' | 'transfer'; 
+    amount: number; 
+    currency: string; 
+    date: string; 
+    status: 'pending' | 'cleared' | 'reconciled'; 
+    notes?: string; 
+    projectId?: string;
+    walletId?: string;
+    fromWalletId?: string;
+    toWalletId?: string;
+  }) => {
     // Persistir en Supabase inmediatamente
     try {
       const { error } = await supabase.from('transactions').insert({
@@ -130,8 +158,15 @@ const FinancesDashboard: React.FC<FinancesDashboardProps> = ({
         notes: tx.notes || null,
         source: 'manual',
         project_id: tx.projectId || null,
+        wallet_id: tx.walletId || null,
+        from_wallet_id: tx.fromWalletId || null,
+        to_wallet_id: tx.toWalletId || null,
       });
       if (error) throw error;
+      
+      // Refrescar wallets después de la transacción
+      await fetchWallets();
+      
       const newTx: FinanceTransaction = {
         id: `tx_${Date.now()}`,
         type: tx.type,
@@ -142,6 +177,9 @@ const FinancesDashboard: React.FC<FinancesDashboardProps> = ({
         projectId: tx.projectId,
         projectName: projects.find(p => p.id === tx.projectId)?.name,
         projectColor: projects.find(p => p.id === tx.projectId)?.color,
+        walletId: tx.walletId,
+        fromWalletId: tx.fromWalletId,
+        toWalletId: tx.toWalletId,
       };
       setLocalTransactions(prev => [newTx, ...prev]);
     } catch (e) {
@@ -180,6 +218,13 @@ const FinancesDashboard: React.FC<FinancesDashboardProps> = ({
           onClose={() => setIsAddOpen(false)}
           baseCurrency={baseCurrency}
           projects={projects}
+          wallets={businessWallets.map(wallet => ({
+            id: wallet.id,
+            name: wallet.name,
+            display_name: wallet.display_name,
+            currency: wallet.currency,
+            balance: wallet.current_balance
+          }))}
           onSave={handleSaveModal}
         />
       )}
@@ -237,30 +282,83 @@ const FinancesDashboard: React.FC<FinancesDashboardProps> = ({
         <AnimatedMiniBars baseCurrency={baseCurrency} transactions={localTransactions} />
       </div>
 
-      {/* Recent transactions */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
-        <h3 className="text-sm font-semibold text-gray-700 mb-3">Transacciones recientes</h3>
-        <RecentTransactionsList transactions={localTransactions.slice(0, 5)} onClickTx={(tx) => setDetailTx(tx)} />
+      {/* Wallet Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {businessWallets.map((wallet) => {
+          const getIcon = () => {
+            switch (wallet.icon_name) {
+              case 'wallet': return <Wallet className="w-5 h-5 text-white" />;
+              case 'credit-card': return <CreditCard className="w-5 h-5 text-white" />;
+              case 'smartphone': return <Smartphone className="w-5 h-5 text-white" />;
+              case 'coins': return <Coins className="w-5 h-5 text-white" />;
+              default: return <Wallet className="w-5 h-5 text-white" />;
+            }
+          };
+
+          const getColors = () => {
+            switch (wallet.name) {
+              case 'cash': return {
+                bg: 'from-green-50 to-green-100',
+                border: 'border-green-200',
+                iconBg: 'bg-green-500',
+                text: 'text-green-900',
+                textSecondary: 'text-green-600'
+              };
+              case 'binance': return {
+                bg: 'from-yellow-50 to-yellow-100',
+                border: 'border-yellow-200',
+                iconBg: 'bg-yellow-500',
+                text: 'text-yellow-900',
+                textSecondary: 'text-yellow-600'
+              };
+              case 'zinli': return {
+                bg: 'from-purple-50 to-purple-100',
+                border: 'border-purple-200',
+                iconBg: 'bg-purple-500',
+                text: 'text-purple-900',
+                textSecondary: 'text-purple-600'
+              };
+              case 'bolivares': return {
+                bg: 'from-blue-50 to-blue-100',
+                border: 'border-blue-200',
+                iconBg: 'bg-blue-500',
+                text: 'text-blue-900',
+                textSecondary: 'text-blue-600'
+              };
+              default: return {
+                bg: 'from-gray-50 to-gray-100',
+                border: 'border-gray-200',
+                iconBg: 'bg-gray-500',
+                text: 'text-gray-900',
+                textSecondary: 'text-gray-600'
+              };
+            }
+          };
+
+          const colors = getColors();
+
+          return (
+            <div key={wallet.id} className={`bg-gradient-to-br ${colors.bg} rounded-xl p-4 border ${colors.border} shadow-sm hover:shadow-md transition-shadow duration-200`}>
+              <div className="flex items-center justify-between mb-3">
+                <div className={`p-2 ${colors.iconBg} rounded-lg`}>
+                  {getIcon()}
+                </div>
+                <div className="text-right">
+                  <div className={`text-xs ${colors.textSecondary} font-medium`}>{wallet.display_name}</div>
+                  <div className={`text-sm ${colors.textSecondary}`}>
+                    {wallet.name === 'bolivares' ? 'VES' : wallet.currency}
+                  </div>
+                </div>
+              </div>
+              <div className={`text-2xl font-bold ${colors.text} mb-1`}>
+                {numberFormat(wallet.current_balance, wallet.currency)}
+              </div>
+              <div className={`text-xs ${colors.textSecondary}`}>Disponible</div>
+            </div>
+          );
+        })}
       </div>
 
-      {/* Detail modal */}
-      {detailTx && (
-        <TransactionDetailModal
-          isOpen={!!detailTx}
-          onClose={() => setDetailTx(null)}
-          tx={{
-            id: detailTx.id,
-            type: detailTx.type,
-            amount: detailTx.amount,
-            currency: detailTx.currency,
-            date: detailTx.date,
-            status: detailTx.status,
-            notes: (detailTx as any).notes,
-            projectName: detailTx.projectName,
-            projectColor: detailTx.projectColor,
-          }}
-        />
-      )}
     </div>
   );
 };
@@ -338,28 +436,6 @@ const AnimatedMiniBars: React.FC<{ baseCurrency: string; transactions: FinanceTr
   );
 };
 
-const RecentTransactionsList: React.FC<{ transactions: FinanceTransaction[]; onClickTx?: (tx: FinanceTransaction) => void }> = ({ transactions, onClickTx }) => {
-  if (!transactions.length) return <div className="text-sm text-gray-500">Sin transacciones</div>;
-  return (
-    <ul className="divide-y divide-gray-200">
-      {transactions.map(tx => (
-        <li key={tx.id} className="py-2 flex items-center justify-between text-sm cursor-pointer hover:bg-gray-50 px-2 rounded" onClick={() => onClickTx && onClickTx(tx)}>
-          <div className="flex items-center gap-3">
-            <span className={`inline-flex items-center px-2 py-0.5 rounded-full border text-xs ${tx.type==='income' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-700 border-red-200'}`}>{tx.type==='income' ? 'Ingreso' : 'Egreso'}</span>
-            <span className="text-gray-600">{tx.date.toLocaleDateString()}</span>
-            {tx.projectName && (
-              <span className="inline-flex items-center gap-1 text-gray-700">
-                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: tx.projectColor || '#9CA3AF' }} />
-                <span className="max-w-none">{tx.projectName}</span>
-              </span>
-            )}
-          </div>
-          <div className={`font-medium ${tx.type==='income' ? 'text-emerald-700' : 'text-red-700'}`}>{numberFormat(tx.amount, tx.currency)}</div>
-        </li>
-      ))}
-    </ul>
-  );
-};
 
 export default FinancesDashboard;
 

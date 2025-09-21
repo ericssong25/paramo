@@ -13,13 +13,67 @@ import {
   Edit,
   Search,
   Flag,
-  X
+  X,
+  User as UserIcon,
+  DollarSign,
+  CalendarDays,
+  Settings,
+  FileText,
+  Briefcase,
+  TrendingUp,
+  Globe
 } from 'lucide-react';
-import TransactionModal from './TransactionModal';
-import { supabase } from '../lib/supabase';
 import { Project, User, Task, ContentItem } from '../types';
 import ContentCalendar from './ContentCalendar';
 import ConsistentHeader from './ConsistentHeader';
+
+// Funciones para manejar formato de fecha dd/mm/yyyy
+const formatDateForDisplay = (date: Date): string => {
+  const day = date.getDate().toString().padStart(2, '0');
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
+};
+
+const parseDateFromDisplay = (dateString: string): Date | null => {
+  const cleanString = dateString.replace(/\D/g, '');
+  if (cleanString === '') return null;
+  if (cleanString.length < 8) return null;
+  
+  const day = parseInt(cleanString.substring(0, 2), 10);
+  const month = parseInt(cleanString.substring(2, 4), 10) - 1;
+  const year = parseInt(cleanString.substring(4, 8), 10);
+  
+  if (day < 1 || day > 31 || month < 0 || month > 11 || year < 1900 || year > 2100) {
+    return null;
+  }
+  
+  const date = new Date(year, month, day);
+  if (date.getDate() !== day || date.getMonth() !== month || date.getFullYear() !== year) {
+    return null;
+  }
+  
+  return date;
+};
+
+const formatDateInput = (value: string): string => {
+  const numbers = value.replace(/\D/g, '');
+  if (numbers === '') return '';
+  const limitedNumbers = numbers.substring(0, 8);
+  
+  if (limitedNumbers.length <= 2) {
+    return limitedNumbers;
+  } else if (limitedNumbers.length <= 4) {
+    return `${limitedNumbers.substring(0, 2)}/${limitedNumbers.substring(2)}`;
+  } else {
+    return `${limitedNumbers.substring(0, 2)}/${limitedNumbers.substring(2, 4)}/${limitedNumbers.substring(4)}`;
+  }
+};
+
+const createDateFromISO = (isoString: string): Date => {
+  const [year, month, day] = isoString.split('-').map(Number);
+  return new Date(year, month - 1, day);
+};
 
 interface ProjectHubProps {
   project: Project;
@@ -63,8 +117,8 @@ const ProjectHub: React.FC<ProjectHubProps> = ({
   });
   const [searchQuery, setSearchQuery] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
-  const [isTxOpen, setIsTxOpen] = useState(false);
   const [isPaymentDayModalOpen, setIsPaymentDayModalOpen] = useState(false);
+  const [isStrategyModalOpen, setIsStrategyModalOpen] = useState(false);
 
   // Resetear pestaña activa cuando cambia el proyecto
   useEffect(() => {
@@ -175,14 +229,6 @@ const ProjectHub: React.FC<ProjectHubProps> = ({
         showCreateButton={false}
       >
         <button
-          onClick={() => setIsTxOpen(true)}
-          className="flex items-center px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          title="Registrar transacción"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Nueva Transacción
-        </button>
-        <button
           onClick={onCreateTask}
           className="flex items-center px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
         >
@@ -197,27 +243,6 @@ const ProjectHub: React.FC<ProjectHubProps> = ({
           Editar
         </button>
       </ConsistentHeader>
-      {/* Quick transaction modal associated to this project */}
-      {isTxOpen && (
-        <TransactionModal
-          isOpen={isTxOpen}
-          onClose={() => setIsTxOpen(false)}
-          baseCurrency={'USD'}
-          projects={[{ id: project.id, name: project.name, color: project.color as any }] as any}
-          onSave={async (tx) => {
-            await supabase.from('transactions').insert({
-              type: tx.type,
-              amount: tx.amount,
-              currency: tx.currency,
-              date: tx.date,
-              status: tx.status,
-              notes: tx.notes || null,
-              source: 'manual',
-              project_id: project.id,
-            });
-          }}
-        />
-      )}
 
       {/* Tabs - Siempre visibles */}
       <div className="bg-white border-b border-gray-200">
@@ -261,132 +286,299 @@ const ProjectHub: React.FC<ProjectHubProps> = ({
        <div className="flex-1 overflow-auto">
          {activeTab === 'overview' ? (
            <div className="p-6 space-y-6">
-             {/* Información Rápida */}
-             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-               <div className="bg-white rounded-lg border border-gray-200 p-4">
-                 <div className="flex items-center text-gray-600 mb-2">
-                   <Users className="w-4 h-4 mr-2" />
-                   <span className="text-sm font-medium">Cliente</span>
+             {/* Información Rápida - Rediseñada */}
+             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+               
+               {/* Cliente */}
+               <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-6 border border-blue-200 shadow-sm hover:shadow-md transition-shadow duration-200">
+                 <div className="flex items-center justify-between mb-4">
+                   <div className="p-3 bg-blue-500 rounded-xl">
+                     <Users className="w-6 h-6 text-white" />
+                   </div>
+                   <div className="text-right">
+                     <p className="text-xs font-medium text-blue-700 uppercase tracking-wide">Cliente</p>
+                   </div>
                  </div>
-                 <p className="text-gray-900 font-semibold">{project.client}</p>
+                 <h3 className="text-xl font-bold text-blue-900 truncate">{project.client}</h3>
                </div>
 
-               <div className="bg-white rounded-lg border border-gray-200 p-4">
-                 <div className="flex items-center text-gray-600 mb-2">
-                   <Target className="w-4 h-4 mr-2" />
-                   <span className="text-sm font-medium">Estado</span>
+               {/* Estado */}
+               <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-6 border border-purple-200 shadow-sm hover:shadow-md transition-shadow duration-200">
+                 <div className="flex items-center justify-between mb-4">
+                   <div className="p-3 bg-purple-500 rounded-xl">
+                     <Target className="w-6 h-6 text-white" />
+                   </div>
+                   <div className="text-right">
+                     <p className="text-xs font-medium text-purple-700 uppercase tracking-wide">Estado</p>
+                   </div>
                  </div>
-                 <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(project.status)}`}>
+                 <div className={`inline-flex items-center px-3 py-2 rounded-full text-sm font-bold ${getStatusColor(project.status)}`}>
                    {getStatusIcon(project.status)}
-                   <span className="ml-1">{getStatusText(project.status)}</span>
+                   <span className="ml-2">{getStatusText(project.status)}</span>
                  </div>
                </div>
 
-               <div className="bg-white rounded-lg border border-gray-200 p-4">
-                 <div className="flex items-center text-gray-600 mb-2">
-                   <Clock className="w-4 h-4 mr-2" />
-                   <span className="text-sm font-medium">Progreso</span>
+               {/* Progreso */}
+               <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-6 border border-green-200 shadow-sm hover:shadow-md transition-shadow duration-200">
+                 <div className="flex items-center justify-between mb-4">
+                   <div className="p-3 bg-green-500 rounded-xl">
+                     <TrendingUp className="w-6 h-6 text-white" />
+                   </div>
+                   <div className="text-right">
+                     <p className="text-xs font-medium text-green-700 uppercase tracking-wide">Progreso</p>
+                   </div>
                  </div>
-                 <div className="flex items-center">
-                   <div className="flex-1 bg-gray-200 rounded-full h-2 mr-3">
+                 <div className="space-y-2">
+                   <div className="flex items-center justify-between">
+                     <span className="text-2xl font-bold text-green-900">{progressPercentage}%</span>
+                   </div>
+                   <div className="w-full bg-green-200 rounded-full h-3">
                      <div 
-                       className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                       className="bg-gradient-to-r from-green-500 to-green-600 h-3 rounded-full transition-all duration-500 ease-out"
                        style={{ width: `${progressPercentage}%` }}
                      />
                    </div>
-                   <span className="text-sm font-medium text-gray-900">{progressPercentage}%</span>
                  </div>
                </div>
 
-               <div className="bg-white rounded-lg border border-gray-200 p-4">
-                 <div className="flex items-center text-gray-600 mb-2">
-                   <Calendar className="w-4 h-4 mr-2" />
-                   <span className="text-sm font-medium">Tareas</span>
+               {/* Tareas */}
+               <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl p-6 border border-orange-200 shadow-sm hover:shadow-md transition-shadow duration-200">
+                 <div className="flex items-center justify-between mb-4">
+                   <div className="p-3 bg-orange-500 rounded-xl">
+                     <Calendar className="w-6 h-6 text-white" />
+                   </div>
+                   <div className="text-right">
+                     <p className="text-xs font-medium text-orange-700 uppercase tracking-wide">Tareas</p>
+                   </div>
                  </div>
-                 <p className="text-gray-900 font-semibold">
-                   {completedTasks.length}/{projectTasks.length} completadas
-                 </p>
+                 <div className="space-y-1">
+                   <p className="text-2xl font-bold text-orange-900">
+                     {completedTasks.length}/{projectTasks.length}
+                   </p>
+                   <p className="text-sm font-medium text-orange-700">completadas</p>
+                 </div>
                </div>
              </div>
 
-             {/* Descripción del Proyecto */}
-             <div className="bg-white rounded-lg border border-gray-200 p-6">
-               <h2 className="text-lg font-semibold text-gray-900 mb-4">Descripción del Proyecto</h2>
-               <p className="text-gray-700 leading-relaxed">{project.description}</p>
+             {/* Descripción del Proyecto - Rediseñada */}
+             <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+               <div className="bg-gradient-to-r from-indigo-50 to-indigo-100 px-6 py-4 border-b border-gray-100">
+                 <div className="flex items-center space-x-3">
+                   <div className="p-2 bg-indigo-100 rounded-lg">
+                     <FileText className="w-5 h-5 text-indigo-600" />
+                   </div>
+                   <div>
+                     <h2 className="text-xl font-bold text-gray-900">Descripción del Proyecto</h2>
+                     <p className="text-sm text-gray-600">Información general y contexto</p>
+                   </div>
+                 </div>
+               </div>
+               <div className="p-6">
+                 <p className="text-gray-700 leading-relaxed text-lg">{project.description}</p>
+               </div>
              </div>
 
-             {/* Información General */}
-             <div className="bg-white rounded-lg border border-gray-200 p-6">
-               <h2 className="text-lg font-semibold text-gray-900 mb-4">Información General</h2>
+             {/* Información General - Rediseñada */}
+             <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+               {/* Header con gradiente */}
+               <div className="bg-gradient-to-r from-blue-50 to-purple-50 px-6 py-4 border-b border-gray-100">
+                 <div className="flex items-center space-x-3">
+                   <div className="p-2 bg-blue-100 rounded-lg">
+                     <Settings className="w-5 h-5 text-blue-600" />
+                   </div>
+                   <div>
+                     <h2 className="text-xl font-bold text-gray-900">Información del Proyecto</h2>
+                     <p className="text-sm text-gray-600">Configuración y detalles principales</p>
+                   </div>
+                 </div>
+               </div>
                
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                 <div>
-                   <label className="block text-sm font-medium text-gray-700 mb-2">Líder del Proyecto</label>
-                   <div className="flex items-center space-x-3">
+               {/* Contenido con grid mejorado */}
+               <div className="p-6">
+                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                   
+                   {/* Líder del Proyecto */}
+                   <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 border border-blue-200">
+                     <div className="flex items-center space-x-3 mb-3">
+                       <div className="p-2 bg-blue-500 rounded-lg">
+                         <UserIcon className="w-4 h-4 text-white" />
+                       </div>
+                       <h3 className="font-semibold text-blue-900">Líder del Proyecto</h3>
+                     </div>
                      {project.projectLead ? (
-                       <>
+                       <div className="flex items-center space-x-3">
                          <img 
                            src={project.projectLead.avatar} 
                            alt={project.projectLead.name}
-                           className="w-10 h-10 rounded-full"
+                           className="w-12 h-12 rounded-full border-2 border-blue-300"
                          />
-                         <span className="text-gray-900">{project.projectLead.name}</span>
-                       </>
+                         <div>
+                           <p className="font-medium text-gray-900">{project.projectLead.name}</p>
+                           <p className="text-sm text-blue-700">Responsable principal</p>
+                         </div>
+                       </div>
                      ) : (
-                       <span className="text-gray-500">No asignado</span>
+                       <div className="flex items-center space-x-3">
+                         <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
+                           <UserIcon className="w-6 h-6 text-gray-400" />
+                         </div>
+                         <div>
+                           <p className="text-gray-500 font-medium">No asignado</p>
+                           <p className="text-sm text-gray-400">Sin líder designado</p>
+                         </div>
+                       </div>
                      )}
                    </div>
-                 </div>
 
-                 <div>
-                   <label className="block text-sm font-medium text-gray-700 mb-2">Tipo de Proyecto</label>
-                   <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                     project.type === 'finite' 
-                       ? 'bg-blue-100 text-blue-800' 
-                       : 'bg-purple-100 text-purple-800'
-                   }`}>
-                     {project.type === 'finite' ? 'Proyecto Finito' : 'Servicio Recurrente'}
-                   </span>
-                 </div>
+                   {/* Tipo de Proyecto */}
+                   <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4 border border-purple-200">
+                     <div className="flex items-center space-x-3 mb-3">
+                       <div className="p-2 bg-purple-500 rounded-lg">
+                         <Briefcase className="w-4 h-4 text-white" />
+                       </div>
+                       <h3 className="font-semibold text-purple-900">Tipo de Proyecto</h3>
+                     </div>
+                     <div className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-bold ${
+                       project.type === 'finite' 
+                         ? 'bg-blue-500 text-white' 
+                         : 'bg-purple-500 text-white'
+                     }`}>
+                       {project.type === 'finite' ? 'Proyecto Finito' : 'Servicio Recurrente'}
+                     </div>
+                   </div>
 
-                 {project.type === 'recurring' && (
-                   <div>
-                     <label className="block text-sm font-medium text-gray-700 mb-2">Día de pago</label>
-                     <div className="flex items-center space-x-2">
-                       <span className="text-gray-900">
-                         {project.reportingDay || 1} de cada mes
-                       </span>
+                   {/* Día de Pago (solo para recurrentes) */}
+                   {project.type === 'recurring' && (
+                     <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 border border-green-200">
+                       <div className="flex items-center justify-between mb-3">
+                         <div className="flex items-center space-x-3">
+                           <div className="p-2 bg-green-500 rounded-lg">
+                             <DollarSign className="w-4 h-4 text-white" />
+                           </div>
+                           <h3 className="font-semibold text-green-900">Día de Pago</h3>
+                         </div>
+                         <button
+                           onClick={() => setIsPaymentDayModalOpen(true)}
+                           className="p-1.5 text-green-600 hover:text-green-800 hover:bg-green-200 rounded-lg transition-all duration-200"
+                           title="Editar día de pago"
+                         >
+                           <Edit className="w-4 h-4" />
+                         </button>
+                       </div>
+                       <div className="flex items-center space-x-2">
+                         <CalendarDays className="w-5 h-5 text-green-600" />
+                         <span className="text-lg font-bold text-green-900">
+                           {project.reportingDay || 1} de cada mes
+                         </span>
+                       </div>
+                     </div>
+                   )}
+
+                   {/* Estrategia (editable) */}
+                   <div className="bg-gradient-to-br from-cyan-50 to-cyan-100 rounded-xl p-4 border border-cyan-200">
+                     <div className="flex items-center justify-between mb-3">
+                       <div className="flex items-center space-x-3">
+                         <div className="p-2 bg-cyan-500 rounded-lg">
+                           <Globe className="w-4 h-4 text-white" />
+                         </div>
+                         <h3 className="font-semibold text-cyan-900">Estrategia</h3>
+                       </div>
                        <button
-                         onClick={() => setIsPaymentDayModalOpen(true)}
-                         className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
-                         title="Editar día de pago"
+                         onClick={() => setIsStrategyModalOpen(true)}
+                         className="p-1.5 text-cyan-600 hover:text-cyan-800 hover:bg-cyan-200 rounded-lg transition-all duration-200"
+                         title="Editar estrategia"
                        >
                          <Edit className="w-4 h-4" />
                        </button>
                      </div>
+                     {project.strategy ? (
+                       <a
+                         href={project.strategy}
+                         target="_blank"
+                         rel="noopener noreferrer"
+                         className="inline-flex items-center space-x-2 text-cyan-700 hover:text-cyan-900 font-medium transition-colors duration-200"
+                       >
+                         <span className="truncate">Ver estrategia</span>
+                         <ExternalLink className="w-4 h-4 flex-shrink-0" />
+                       </a>
+                     ) : (
+                       <p className="text-cyan-700 font-medium">Sin enlace configurado</p>
+                     )}
                    </div>
-                 )}
 
-                 {project.type === 'finite' && project.finalDueDate && (
-                   <div>
-                     <label className="block text-sm font-medium text-gray-700 mb-2">Fecha de Entrega Final</label>
-                     <span className="text-gray-900">{formatDate(project.finalDueDate)}</span>
-                   </div>
-                 )}
+                   {/* Finalización de Estrategia (solo para recurrentes) */}
+                   {project.type === 'recurring' && project.calendarEnds && (
+                     <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl p-4 border border-orange-200">
+                       <div className="flex items-center space-x-3 mb-3">
+                         <div className="p-2 bg-orange-500 rounded-lg">
+                           <TrendingUp className="w-4 h-4 text-white" />
+                         </div>
+                         <h3 className="font-semibold text-orange-900">Finalización de Estrategia</h3>
+                       </div>
+                       <div className="flex items-center space-x-2">
+                         <Calendar className="w-5 h-5 text-orange-600" />
+                         <span className="text-lg font-bold text-orange-900">
+                           {project.calendarEnds.toLocaleDateString('es-ES', {
+                             day: 'numeric',
+                             month: 'long',
+                             year: 'numeric'
+                           })}
+                         </span>
+                       </div>
+                     </div>
+                   )}
 
-                 {project.type === 'recurring' && (
-                   <div>
-                     <label className="block text-sm font-medium text-gray-700 mb-2">Ciclo de Servicio</label>
-                     <span className="text-gray-900 capitalize">{project.serviceCycle}</span>
-                   </div>
-                 )}
+                   {/* Ciclo de Servicio (solo para recurrentes) */}
+                   {project.type === 'recurring' && (
+                     <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-xl p-4 border border-indigo-200">
+                       <div className="flex items-center space-x-3 mb-3">
+                         <div className="p-2 bg-indigo-500 rounded-lg">
+                           <Clock className="w-4 h-4 text-white" />
+                         </div>
+                         <h3 className="font-semibold text-indigo-900">Ciclo de Servicio</h3>
+                       </div>
+                       <div className="flex items-center space-x-2">
+                         <div className="w-2 h-2 bg-indigo-500 rounded-full"></div>
+                         <span className="text-lg font-bold text-indigo-900 capitalize">
+                           {project.serviceCycle}
+                         </span>
+                       </div>
+                     </div>
+                   )}
 
-                 {project.type === 'recurring' && project.lastPaymentDate && (
-                   <div>
-                     <label className="block text-sm font-medium text-gray-700 mb-2">Último Pago</label>
-                     <span className="text-gray-900">{formatDate(project.lastPaymentDate)}</span>
-                   </div>
-                 )}
+                   {/* Fecha de Entrega Final (solo para finitos) */}
+                   {project.type === 'finite' && project.finalDueDate && (
+                     <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-xl p-4 border border-red-200">
+                       <div className="flex items-center space-x-3 mb-3">
+                         <div className="p-2 bg-red-500 rounded-lg">
+                           <Target className="w-4 h-4 text-white" />
+                         </div>
+                         <h3 className="font-semibold text-red-900">Entrega Final</h3>
+                       </div>
+                       <div className="flex items-center space-x-2">
+                         <Calendar className="w-5 h-5 text-red-600" />
+                         <span className="text-lg font-bold text-red-900">{formatDate(project.finalDueDate)}</span>
+                       </div>
+                     </div>
+                   )}
+
+                   {/* Último Pago (solo para recurrentes) */}
+                   {project.type === 'recurring' && project.lastPaymentDate && (
+                     <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-xl p-4 border border-emerald-200">
+                       <div className="flex items-center space-x-3 mb-3">
+                         <div className="p-2 bg-emerald-500 rounded-lg">
+                           <CheckCircle className="w-4 h-4 text-white" />
+                         </div>
+                         <h3 className="font-semibold text-emerald-900">Último Pago</h3>
+                       </div>
+                       <div className="flex items-center space-x-2">
+                         <Calendar className="w-5 h-5 text-emerald-600" />
+                         <span className="text-lg font-bold text-emerald-900">{formatDate(project.lastPaymentDate)}</span>
+                       </div>
+                     </div>
+                   )}
+
+                 </div>
                </div>
              </div>
 
@@ -676,6 +868,27 @@ const ProjectHub: React.FC<ProjectHubProps> = ({
           }}
         />
       )}
+
+      {/* Modal para editar estrategia */}
+      {isStrategyModalOpen && (
+        <StrategyModal
+          isOpen={isStrategyModalOpen}
+          onClose={() => setIsStrategyModalOpen(false)}
+          currentStrategy={project.strategy || ''}
+          currentCalendarEnds={project.calendarEnds}
+          onSave={async (strategy: string, calendarEnds?: Date) => {
+            try {
+              await onUpdateProject(project.id, { 
+                strategy: strategy || undefined,
+                calendarEnds: calendarEnds || undefined
+              });
+              setIsStrategyModalOpen(false);
+            } catch (error) {
+              console.error('Error updating strategy:', error);
+            }
+          }}
+        />
+      )}
     </div>
   );
 };
@@ -766,6 +979,187 @@ const PaymentDayModal: React.FC<PaymentDayModalProps> = ({
               type="submit"
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
               disabled={isLoading || (day.trim() !== '' && (parseInt(day, 10) < 1 || parseInt(day, 10) > 31))}
+            >
+              {isLoading ? 'Guardando...' : 'Guardar'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+// Modal para editar estrategia y fecha de finalización
+interface StrategyModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  currentStrategy: string;
+  currentCalendarEnds?: Date;
+  onSave: (strategy: string, calendarEnds?: Date) => Promise<void>;
+}
+
+const StrategyModal: React.FC<StrategyModalProps> = ({
+  isOpen,
+  onClose,
+  currentStrategy,
+  currentCalendarEnds,
+  onSave
+}) => {
+  const [strategy, setStrategy] = useState<string>(currentStrategy);
+  const [calendarEnds, setCalendarEnds] = useState<string>(
+    currentCalendarEnds ? formatDateForDisplay(currentCalendarEnds) : ''
+  );
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setStrategy(currentStrategy);
+      setCalendarEnds(currentCalendarEnds ? formatDateForDisplay(currentCalendarEnds) : '');
+    }
+  }, [isOpen, currentStrategy, currentCalendarEnds]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    setIsLoading(true);
+    try {
+      const calendarEndsDate = calendarEnds.trim() ? parseDateFromDisplay(calendarEnds) : undefined;
+      await onSave(strategy.trim(), calendarEndsDate || undefined);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+        <div className="flex items-center justify-between p-6 border-b">
+          <h2 className="text-xl font-semibold text-gray-900">Editar Estrategia</h2>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Enlace a la estrategia
+            </label>
+            <input
+              type="url"
+              value={strategy}
+              onChange={(e) => setStrategy(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="https://..."
+            />
+            <p className="text-sm text-gray-500 mt-1">
+              URL del documento o enlace de la estrategia
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Finalización de estrategia
+            </label>
+            <div className="relative">
+              <input
+                type="text"
+                value={calendarEnds}
+                onChange={(e) => {
+                  const rawValue = e.target.value;
+                  const formattedValue = formatDateInput(rawValue);
+                  setCalendarEnds(formattedValue);
+                }}
+                onBlur={(e) => {
+                  const value = e.target.value;
+                  if (value && value.length === 10) {
+                    const date = parseDateFromDisplay(value);
+                    if (!date) {
+                      setCalendarEnds('');
+                    }
+                  }
+                }}
+                className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="dd/mm/aaaa"
+                maxLength={10}
+              />
+              <button
+                type="button"
+                onClick={(e) => {
+                  const buttonRect = e.currentTarget.getBoundingClientRect();
+                  const tempInput = document.createElement('input');
+                  tempInput.type = 'date';
+                  tempInput.style.position = 'fixed';
+                  tempInput.style.top = `${buttonRect.bottom + 5}px`;
+                  tempInput.style.left = `${buttonRect.left}px`;
+                  tempInput.style.zIndex = '9999';
+                  tempInput.style.opacity = '0';
+                  tempInput.style.pointerEvents = 'none';
+                  
+                  if (calendarEnds && calendarEnds.length === 10) {
+                    const date = parseDateFromDisplay(calendarEnds);
+                    if (date) {
+                      const year = date.getFullYear();
+                      const month = (date.getMonth() + 1).toString().padStart(2, '0');
+                      const day = date.getDate().toString().padStart(2, '0');
+                      tempInput.value = `${year}-${month}-${day}`;
+                    }
+                  }
+                  
+                  document.body.appendChild(tempInput);
+                  
+                  const handleChange = (event: any) => {
+                    if (event.target.value) {
+                      const date = createDateFromISO(event.target.value);
+                      setCalendarEnds(formatDateForDisplay(date));
+                    } else {
+                      setCalendarEnds('');
+                    }
+                    document.body.removeChild(tempInput);
+                  };
+                  
+                  const handleClickOutside = () => {
+                    document.body.removeChild(tempInput);
+                    document.removeEventListener('click', handleClickOutside);
+                  };
+                  
+                  tempInput.addEventListener('change', handleChange);
+                  document.addEventListener('click', handleClickOutside);
+                  
+                  setTimeout(() => {
+                    tempInput.focus();
+                    tempInput.showPicker ? tempInput.showPicker() : tempInput.click();
+                  }, 10);
+                }}
+                className="absolute right-1 top-1/2 transform -translate-y-1/2 w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 cursor-pointer"
+                title="Seleccionar fecha"
+              >
+                <CalendarDays className="w-4 h-4" />
+              </button>
+            </div>
+            <p className="text-sm text-gray-500 mt-1">
+              Formato: dd/mm/aaaa (se formatea automáticamente)
+            </p>
+          </div>
+
+          <div className="flex justify-end space-x-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+              disabled={isLoading}
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+              disabled={isLoading}
             >
               {isLoading ? 'Guardando...' : 'Guardar'}
             </button>

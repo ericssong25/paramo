@@ -41,6 +41,8 @@ export const convertSupabaseProjectToProject = (project: SupabaseProject): Proje
   reportingDay: project.reporting_day || 0,
   lastPaymentDate: parseSupabaseDate(project.last_payment_date),
   paymentDate: parseSupabaseDate(project.payment_date),
+  calendarEnds: parseSupabaseDate(project.calendar_ends),
+  strategy: project.strategy || undefined,
   monthlyDeliverables: project.monthly_deliverables || [],
   driveLink: project.drive_link || '',
 });
