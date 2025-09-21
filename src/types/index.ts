@@ -35,6 +35,8 @@ export interface Project {
   // Para proyectos recurrentes  
   serviceCycle?: 'monthly' | 'weekly' | 'quarterly';
   reportingDay?: number; // Día del mes para reportes
+  lastPaymentDate?: Date; // Fecha del último pago del cliente
+  paymentDate?: Date; // Fecha de pago del cliente
   monthlyDeliverables?: any[]; // JSONB en Supabase
   
   // Integración con documentación
@@ -245,6 +247,8 @@ export interface SupabaseProject {
   final_due_date: string | null;
   service_cycle: 'monthly' | 'weekly' | 'quarterly' | null;
   reporting_day: number | null;
+  last_payment_date: string | null;
+  payment_date: string | null;
   monthly_deliverables: any | null;
   drive_link: string | null;
   created_at: string;

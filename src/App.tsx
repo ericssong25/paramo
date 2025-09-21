@@ -929,6 +929,39 @@ function App() {
     setIsProjectModalOpen(true);
   };
 
+  const handleUpdateProject = async (projectId: string, updates: Partial<Project>) => {
+    try {
+      // Convertir datos del frontend al formato de Supabase
+      const supabaseUpdates: any = {};
+      
+      // Mapear campos del frontend a la base de datos
+      if (updates.name !== undefined) supabaseUpdates.name = updates.name;
+      if (updates.description !== undefined) supabaseUpdates.description = updates.description;
+      if (updates.color !== undefined) supabaseUpdates.color = updates.color;
+      if (updates.type !== undefined) supabaseUpdates.type = updates.type;
+      if (updates.status !== undefined) supabaseUpdates.status = updates.status;
+      if (updates.client !== undefined) supabaseUpdates.client = updates.client;
+      if (updates.projectLead?.id !== undefined) supabaseUpdates.project_lead_id = updates.projectLead.id;
+      if (updates.objective !== undefined) supabaseUpdates.objective = updates.objective;
+      if (updates.scope !== undefined) supabaseUpdates.scope = updates.scope;
+      if (updates.finalDueDate !== undefined) supabaseUpdates.final_due_date = formatDateForSupabase(updates.finalDueDate);
+      if (updates.serviceCycle !== undefined) supabaseUpdates.service_cycle = updates.serviceCycle;
+      if (updates.reportingDay !== undefined) supabaseUpdates.reporting_day = updates.reportingDay;
+      if (updates.lastPaymentDate !== undefined) supabaseUpdates.last_payment_date = formatDateForSupabase(updates.lastPaymentDate);
+      if (updates.paymentDate !== undefined) supabaseUpdates.payment_date = formatDateForSupabase(updates.paymentDate);
+      if (updates.monthlyDeliverables !== undefined) supabaseUpdates.monthly_deliverables = updates.monthlyDeliverables;
+      if (updates.driveLink !== undefined) supabaseUpdates.drive_link = updates.driveLink;
+
+      console.log('🔄 Actualizando proyecto:', projectId);
+      console.log('📋 Datos a enviar a Supabase:', supabaseUpdates);
+      
+      await updateProject(projectId, supabaseUpdates);
+      console.log('✅ Proyecto actualizado exitosamente');
+    } catch (error) {
+      console.error('❌ Error al actualizar proyecto:', error);
+    }
+  };
+
   const handleBackToOverview = () => {
     setSelectedProjectId(null);
     setActiveView('tasks');
@@ -959,7 +992,8 @@ function App() {
           scope: projectData.scope,
           final_due_date: formatDateForSupabase(projectData.finalDueDate),
           service_cycle: projectData.serviceCycle,
-          reporting_day: projectData.reportingDay,
+          last_payment_date: formatDateForSupabase(projectData.lastPaymentDate),
+          payment_date: formatDateForSupabase(projectData.paymentDate),
           monthly_deliverables: projectData.monthlyDeliverables,
           drive_link: projectData.driveLink,
         });
@@ -978,7 +1012,8 @@ function App() {
           scope: projectData.scope,
           final_due_date: formatDateForSupabase(projectData.finalDueDate),
           service_cycle: projectData.serviceCycle,
-          reporting_day: projectData.reportingDay,
+          last_payment_date: formatDateForSupabase(projectData.lastPaymentDate),
+          payment_date: formatDateForSupabase(projectData.paymentDate),
           monthly_deliverables: projectData.monthlyDeliverables,
           drive_link: projectData.driveLink,
         });
@@ -996,7 +1031,8 @@ function App() {
           scope: projectData.scope,
           final_due_date: formatDateForSupabase(projectData.finalDueDate),
           service_cycle: projectData.serviceCycle,
-          reporting_day: projectData.reportingDay,
+          last_payment_date: formatDateForSupabase(projectData.lastPaymentDate),
+          payment_date: formatDateForSupabase(projectData.paymentDate),
           monthly_deliverables: projectData.monthlyDeliverables,
           drive_link: projectData.driveLink,
         });
@@ -1158,6 +1194,7 @@ function App() {
           onCreateContent={handleCreateContent}
           onViewContent={handleViewContent}
           onEditProject={handleEditProject}
+          onUpdateProject={handleUpdateProject}
           onBackToOverview={handleBackToOverview}
           onNavigateToContentCalendar={handleNavigateToContentCalendar}
           onMarkAsPublished={handleMarkAsPublished}

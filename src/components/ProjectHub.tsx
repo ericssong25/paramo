@@ -12,7 +12,8 @@ import {
   Plus,
   Edit,
   Search,
-  Flag
+  Flag,
+  X
 } from 'lucide-react';
 import TransactionModal from './TransactionModal';
 import { supabase } from '../lib/supabase';
@@ -31,6 +32,7 @@ interface ProjectHubProps {
   onCreateContent: () => void;
   onViewContent: (content: ContentItem) => void;
   onEditProject: (project: Project) => void;
+  onUpdateProject: (projectId: string, updates: Partial<Project>) => Promise<void>;
   onBackToOverview: () => void;
   onNavigateToContentCalendar: () => void;
   onMarkAsPublished?: (contentId: string) => void;
@@ -47,6 +49,7 @@ const ProjectHub: React.FC<ProjectHubProps> = ({
   onCreateContent,
   onViewContent,
   onEditProject,
+  onUpdateProject,
   // onBackToOverview,
   // onNavigateToContentCalendar,
   onMarkAsPublished,
@@ -61,6 +64,7 @@ const ProjectHub: React.FC<ProjectHubProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
   const [isTxOpen, setIsTxOpen] = useState(false);
+  const [isPaymentDayModalOpen, setIsPaymentDayModalOpen] = useState(false);
 
   // Resetear pestaña activa cuando cambia el proyecto
   useEffect(() => {
@@ -345,6 +349,24 @@ const ProjectHub: React.FC<ProjectHubProps> = ({
                    </span>
                  </div>
 
+                 {project.type === 'recurring' && (
+                   <div>
+                     <label className="block text-sm font-medium text-gray-700 mb-2">Día de pago</label>
+                     <div className="flex items-center space-x-2">
+                       <span className="text-gray-900">
+                         {project.reportingDay || 1} de cada mes
+                       </span>
+                       <button
+                         onClick={() => setIsPaymentDayModalOpen(true)}
+                         className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
+                         title="Editar día de pago"
+                       >
+                         <Edit className="w-4 h-4" />
+                       </button>
+                     </div>
+                   </div>
+                 )}
+
                  {project.type === 'finite' && project.finalDueDate && (
                    <div>
                      <label className="block text-sm font-medium text-gray-700 mb-2">Fecha de Entrega Final</label>
@@ -356,6 +378,13 @@ const ProjectHub: React.FC<ProjectHubProps> = ({
                    <div>
                      <label className="block text-sm font-medium text-gray-700 mb-2">Ciclo de Servicio</label>
                      <span className="text-gray-900 capitalize">{project.serviceCycle}</span>
+                   </div>
+                 )}
+
+                 {project.type === 'recurring' && project.lastPaymentDate && (
+                   <div>
+                     <label className="block text-sm font-medium text-gray-700 mb-2">Último Pago</label>
+                     <span className="text-gray-900">{formatDate(project.lastPaymentDate)}</span>
                    </div>
                  )}
                </div>
@@ -629,6 +658,119 @@ const ProjectHub: React.FC<ProjectHubProps> = ({
               />
            </div>
          )}
+      </div>
+
+      {/* Modal para editar día de pago */}
+      {isPaymentDayModalOpen && (
+        <PaymentDayModal
+          isOpen={isPaymentDayModalOpen}
+          onClose={() => setIsPaymentDayModalOpen(false)}
+          currentDay={project.reportingDay || 1}
+          onSave={async (newDay: number) => {
+            try {
+              await onUpdateProject(project.id, { reportingDay: newDay });
+              setIsPaymentDayModalOpen(false);
+            } catch (error) {
+              console.error('Error updating payment day:', error);
+            }
+          }}
+        />
+      )}
+    </div>
+  );
+};
+
+// Modal simple para editar el día de pago
+interface PaymentDayModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  currentDay: number;
+  onSave: (day: number) => Promise<void>;
+}
+
+const PaymentDayModal: React.FC<PaymentDayModalProps> = ({
+  isOpen,
+  onClose,
+  currentDay,
+  onSave
+}) => {
+  const [day, setDay] = useState<string>(currentDay.toString());
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setDay(currentDay.toString());
+    }
+  }, [isOpen, currentDay]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Si el campo está vacío, usar 1 como valor por defecto
+    const dayValue = day.trim() === '' ? 1 : parseInt(day, 10);
+    
+    if (dayValue < 1 || dayValue > 31) return;
+
+    setIsLoading(true);
+    try {
+      await onSave(dayValue);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+        <div className="flex items-center justify-between p-6 border-b">
+          <h2 className="text-xl font-semibold text-gray-900">Editar Día de Pago</h2>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6">
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Día del mes para el pago
+            </label>
+            <input
+              type="number"
+              min="1"
+              max="31"
+              value={day}
+              onChange={(e) => setDay(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="1"
+            />
+            <p className="text-sm text-gray-500 mt-2">
+              El cliente pagará el día {day.trim() === '' ? '1' : day} de cada mes
+            </p>
+          </div>
+
+          <div className="flex justify-end space-x-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+              disabled={isLoading}
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+              disabled={isLoading || (day.trim() !== '' && (parseInt(day, 10) < 1 || parseInt(day, 10) > 31))}
+            >
+              {isLoading ? 'Guardando...' : 'Guardar'}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

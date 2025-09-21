@@ -1,17 +1,79 @@
 import React, { useState, useEffect } from 'react';
 import { 
   X, 
-  Calendar, 
-  User, 
-  Users, 
-  Target,
-  Clock,
   Link,
   Plus,
-  Trash2
+  Trash2,
+  CalendarDays
 } from 'lucide-react';
 import { Project, ProjectType, ProjectStatus, User as UserType, Milestone } from '../types';
 import { formatDateForSupabase } from '../utils/dateUtils';
+
+// Funciones para manejar formato de fecha dd/mm/yyyy
+const formatDateForDisplay = (date: Date): string => {
+  const day = date.getDate().toString().padStart(2, '0');
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
+};
+
+const parseDateFromDisplay = (dateString: string): Date | null => {
+  // Limpiar el string de entrada
+  const cleanString = dateString.replace(/\D/g, '');
+  
+  // Si está vacío, retornar null
+  if (cleanString === '') return null;
+  
+  // Si tiene menos de 8 dígitos, retornar null (necesitamos día/mes/año completo)
+  if (cleanString.length < 8) return null;
+  
+  // Extraer día, mes y año
+  const day = parseInt(cleanString.substring(0, 2), 10);
+  const month = parseInt(cleanString.substring(2, 4), 10) - 1; // Los meses en JS son 0-indexados
+  const year = parseInt(cleanString.substring(4, 8), 10);
+  
+  // Validar rangos básicos
+  if (day < 1 || day > 31 || month < 0 || month > 11 || year < 1900 || year > 2100) {
+    return null;
+  }
+  
+  // Crear fecha en zona horaria local para evitar problemas de UTC
+  const date = new Date(year, month, day);
+  
+  // Verificar que la fecha es válida
+  if (date.getDate() !== day || date.getMonth() !== month || date.getFullYear() !== year) {
+    return null;
+  }
+  
+  return date;
+};
+
+// Función para formatear automáticamente mientras se escribe
+const formatDateInput = (value: string): string => {
+  // Remover todos los caracteres no numéricos
+  const numbers = value.replace(/\D/g, '');
+  
+  // Si está vacío, retornar vacío
+  if (numbers === '') return '';
+  
+  // Limitar a 8 dígitos máximo
+  const limitedNumbers = numbers.substring(0, 8);
+  
+  // Formatear según la longitud
+  if (limitedNumbers.length <= 2) {
+    return limitedNumbers;
+  } else if (limitedNumbers.length <= 4) {
+    return `${limitedNumbers.substring(0, 2)}/${limitedNumbers.substring(2)}`;
+  } else {
+    return `${limitedNumbers.substring(0, 2)}/${limitedNumbers.substring(2, 4)}/${limitedNumbers.substring(4)}`;
+  }
+};
+
+// Función para crear fecha desde string YYYY-MM-DD sin problemas de zona horaria
+const createDateFromISO = (isoString: string): Date => {
+  const [year, month, day] = isoString.split('-').map(Number);
+  return new Date(year, month - 1, day); // month - 1 porque JS usa 0-indexados
+};
 
 interface ProjectModalProps {
   isOpen: boolean;
@@ -40,7 +102,7 @@ const ProjectModal: React.FC<ProjectModalProps> = ({
     scope: (project?.scope && project.scope.length > 0 ? project.scope : ['']),
     finalDueDate: project?.finalDueDate ? formatDateForSupabase(project.finalDueDate) : '',
     serviceCycle: project?.serviceCycle || 'monthly',
-    reportingDay: project?.reportingDay || 1,
+    paymentDate: project?.paymentDate || undefined,
     monthlyDeliverables: (project?.monthlyDeliverables && project.monthlyDeliverables.length > 0 ? project.monthlyDeliverables : ['']),
     driveLink: project?.driveLink || '',
     milestones: project?.milestones || [] as Milestone[]
@@ -61,7 +123,7 @@ const ProjectModal: React.FC<ProjectModalProps> = ({
       scope: (project?.scope && project.scope.length > 0 ? project.scope : ['']),
       finalDueDate: project?.finalDueDate ? formatDateForSupabase(project.finalDueDate) : '',
       serviceCycle: project?.serviceCycle || 'monthly',
-      reportingDay: project?.reportingDay || 1,
+      paymentDate: project?.paymentDate || undefined,
       monthlyDeliverables: (project?.monthlyDeliverables && project.monthlyDeliverables.length > 0 ? project.monthlyDeliverables : ['']),
       driveLink: project?.driveLink || '',
       milestones: project?.milestones || [] as Milestone[]
@@ -122,7 +184,7 @@ const ProjectModal: React.FC<ProjectModalProps> = ({
       scope: formData.scope.filter(item => item.trim()),
       finalDueDate: formData.finalDueDate ? new Date(formData.finalDueDate) : undefined,
       serviceCycle: formData.type === 'recurring' ? formData.serviceCycle : undefined,
-      reportingDay: formData.type === 'recurring' ? formData.reportingDay : undefined,
+      paymentDate: formData.type === 'recurring' ? formData.paymentDate : undefined,
       monthlyDeliverables: formData.type === 'recurring' ? formData.monthlyDeliverables.filter(item => item.trim()) : undefined,
       driveLink: formData.driveLink,
       milestones: formData.milestones,
@@ -452,16 +514,109 @@ const ProjectModal: React.FC<ProjectModalProps> = ({
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Día de Reporte (del mes)
+                    Fecha de Pago
                   </label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="31"
-                    value={formData.reportingDay}
-                    onChange={(e) => updateFormData('reportingDay', parseInt(e.target.value))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={formData.paymentDate ? formatDateForDisplay(formData.paymentDate) : ''}
+                      onChange={(e) => {
+                        const rawValue = e.target.value;
+                        const formattedValue = formatDateInput(rawValue);
+                        
+                        if (formattedValue === '') {
+                          updateFormData('paymentDate', undefined);
+                        } else if (formattedValue.length === 10) { // dd/mm/yyyy completo
+                          const date = parseDateFromDisplay(formattedValue);
+                          if (date) {
+                            updateFormData('paymentDate', date);
+                          }
+                        }
+                        
+                        // Forzar la actualización del valor en el input
+                        setTimeout(() => {
+                          e.target.value = formattedValue;
+                        }, 0);
+                      }}
+                      onBlur={(e) => {
+                        // Al perder el foco, validar y corregir si es necesario
+                        const value = e.target.value;
+                        if (value && value.length === 10) {
+                          const date = parseDateFromDisplay(value);
+                          if (!date) {
+                            // Si la fecha no es válida, limpiar el campo
+                            updateFormData('paymentDate', undefined);
+                            e.target.value = '';
+                          }
+                        }
+                      }}
+                      className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="dd/mm/aaaa"
+                      maxLength={10}
+                    />
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        // Obtener la posición del botón para posicionar el selector
+                        const buttonRect = e.currentTarget.getBoundingClientRect();
+                        
+                        // Crear un input de fecha temporal para el selector nativo
+                        const tempInput = document.createElement('input');
+                        tempInput.type = 'date';
+                        tempInput.style.position = 'fixed';
+                        tempInput.style.top = `${buttonRect.bottom + 5}px`;
+                        tempInput.style.left = `${buttonRect.left}px`;
+                        tempInput.style.zIndex = '9999';
+                        tempInput.style.opacity = '0';
+                        tempInput.style.pointerEvents = 'none';
+                        
+                        // Establecer la fecha actual si existe
+                        if (formData.paymentDate) {
+                          const year = formData.paymentDate.getFullYear();
+                          const month = (formData.paymentDate.getMonth() + 1).toString().padStart(2, '0');
+                          const day = formData.paymentDate.getDate().toString().padStart(2, '0');
+                          tempInput.value = `${year}-${month}-${day}`;
+                        }
+                        
+                        // Agregar al DOM temporalmente
+                        document.body.appendChild(tempInput);
+                        
+                        // Manejar el cambio de fecha
+                        const handleChange = (event: any) => {
+                          if (event.target.value) {
+                            const date = createDateFromISO(event.target.value);
+                            updateFormData('paymentDate', date);
+                          } else {
+                            updateFormData('paymentDate', undefined);
+                          }
+                          // Limpiar el input temporal
+                          document.body.removeChild(tempInput);
+                        };
+                        
+                        // Manejar el clic fuera del selector
+                        const handleClickOutside = () => {
+                          document.body.removeChild(tempInput);
+                          document.removeEventListener('click', handleClickOutside);
+                        };
+                        
+                        tempInput.addEventListener('change', handleChange);
+                        document.addEventListener('click', handleClickOutside);
+                        
+                        // Abrir el selector de fecha
+                        setTimeout(() => {
+                          tempInput.focus();
+                          tempInput.showPicker ? tempInput.showPicker() : tempInput.click();
+                        }, 10);
+                      }}
+                      className="absolute right-1 top-1/2 transform -translate-y-1/2 w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 cursor-pointer"
+                      title="Seleccionar fecha"
+                    >
+                      <CalendarDays className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Formato: dd/mm/aaaa (se formatea automáticamente)
+                  </p>
                 </div>
               </div>
 

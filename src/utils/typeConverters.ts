@@ -1,6 +1,6 @@
 import { User, Project, Task, ContentItem, TaskComment } from '../types';
 import { SupabaseProfile, SupabaseProject, SupabaseTask, SupabaseContentItem, SupabaseTaskComment } from '../types';
-import { parseSupabaseDate, formatDateForSupabase } from './dateUtils';
+import { parseSupabaseDate } from './dateUtils';
 
 // Re-exportar las funciones de fecha para mantener compatibilidad
 export { formatDateForSupabase } from './dateUtils';
@@ -39,6 +39,8 @@ export const convertSupabaseProjectToProject = (project: SupabaseProject): Proje
   finalDueDate: parseSupabaseDate(project.final_due_date),
   serviceCycle: project.service_cycle || undefined,
   reportingDay: project.reporting_day || 0,
+  lastPaymentDate: parseSupabaseDate(project.last_payment_date),
+  paymentDate: parseSupabaseDate(project.payment_date),
   monthlyDeliverables: project.monthly_deliverables || [],
   driveLink: project.drive_link || '',
 });

@@ -88,6 +88,8 @@ export interface Database {
           final_due_date: string | null
           service_cycle: 'monthly' | 'weekly' | 'quarterly' | null
           reporting_day: number | null
+          last_payment_date: string | null
+          payment_date: string | null
           monthly_deliverables: any | null
           drive_link: string | null
           created_at: string
@@ -107,6 +109,8 @@ export interface Database {
           final_due_date?: string | null
           service_cycle?: 'monthly' | 'weekly' | 'quarterly' | null
           reporting_day?: number | null
+          last_payment_date?: string | null
+          payment_date?: string | null
           monthly_deliverables?: any | null
           drive_link?: string | null
           created_at?: string
@@ -126,6 +130,8 @@ export interface Database {
           final_due_date?: string | null
           service_cycle?: 'monthly' | 'weekly' | 'quarterly' | null
           reporting_day?: number | null
+          last_payment_date?: string | null
+          payment_date?: string | null
           monthly_deliverables?: any | null
           drive_link?: string | null
           created_at?: string
