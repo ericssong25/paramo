@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>Food Truck Garden</title>
+<style>
+:root {
+  --red: #E63946;
+  --gold: #F4B942;
+  --bg: #F2F2F7;
+  --card: #FFFFFF;
+  --text: #1C1C1E;
+  --sub: #8E8E93;
+  --border: #E5E5EA;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── HEADER ───────────────────────────────── */
+.header {
+  background: var(--card);
+  padding: 16px 16px 12px;
+  text-align: center;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.header h1 { font-size: 17px; font-weight: 700; color: var(--red); }
+.header p  { font-size: 11px; color: var(--sub); margin-top: 2px; }
+
+/* ── LANG ─────────────────────────────────── */
+.lang-bar {
+  display: flex; justify-content: center; gap: 8px;
+  padding: 10px 16px;
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+}
+.lang-btn {
+  flex: 1; max-width: 100px;
+  background: var(--bg); border: 1.5px solid var(--border);
+  color: var(--sub); padding: 7px 0; border-radius: 10px;
+  font-size: 12px; font-weight: 600; cursor: pointer;
+  transition: all 0.15s;
+}
+.lang-btn.active { background: var(--red); border-color: var(--red); color: #fff; }
+
+/* ── LEGEND ───────────────────────────────── */
+.legend-wrap {
+  padding: 10px 14px;
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+}
+.legend {
+  display: flex; flex-wrap: wrap; gap: 6px 12px;
+}
+.legend-item {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 11px; color: #444; font-weight: 500;
+}
+.legend-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.legend-sep { width: 100%; height: 1px; background: var(--border); margin: 4px 0; }
+
+/* ── MONTH NAV ────────────────────────────── */
+.month-nav {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px;
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+}
+.nav-btn {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: var(--bg); border: none; color: var(--text);
+  font-size: 20px; font-weight: 300; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.nav-btn:active { background: var(--red); color: #fff; }
+.month-label { font-size: 16px; font-weight: 700; text-align: center; flex: 1; }
+
+/* ── CALENDAR ─────────────────────────────── */
+.cal-wrap { padding: 10px 8px; }
+
+.day-headers {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+  margin-bottom: 3px;
+}
+.day-hdr {
+  text-align: center;
+  font-size: 10px; font-weight: 700;
+  color: var(--sub);
+  padding: 4px 0;
+  text-transform: uppercase;
+}
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+}
+
+.day-cell {
+  background: var(--card);
+  border-radius: 10px;
+  border: 1.5px solid var(--border);
+  min-height: 80px;
+  padding: 5px 4px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.day-cell:active { opacity: 0.75; transform: scale(0.97); transition: transform 0.1s; }
+.day-cell.empty  { background: transparent; border-color: transparent; cursor: default; }
+.day-cell.collab { border-color: var(--gold); border-width: 2px; background: #FFFBF0; }
+
+.day-num {
+  font-size: 11px; font-weight: 700;
+  color: var(--sub); margin-bottom: 4px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.day-num .star { font-size: 9px; }
+
+/* 7 story dots */
+.dots {
+  display: flex; flex-wrap: wrap; gap: 2px;
+  margin-bottom: 5px;
+}
+.dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* post chip */
+.chip {
+  border-radius: 5px;
+  padding: 2px 5px;
+  font-size: 9px; font-weight: 700;
+  display: flex; align-items: center; gap: 2px;
+  overflow: hidden;
+}
+.chip-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+.chip-txt { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ── STATS ────────────────────────────────── */
+.stats {
+  display: grid; grid-template-columns: repeat(2, 1fr);
+  gap: 8px; padding: 0 8px 16px;
+}
+.stat-card {
+  background: var(--card); border-radius: 12px;
+  padding: 14px 10px; text-align: center;
+}
+.stat-num   { font-size: 28px; font-weight: 800; color: var(--red); }
+.stat-label { font-size: 10px; color: var(--sub); margin-top: 2px; font-weight: 600; text-transform: uppercase; }
+
+/* ── BOTTOM SHEET MODAL ───────────────────── */
+.overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.45);
+  z-index: 100;
+  display: none; align-items: flex-end;
+  opacity: 0; transition: opacity 0.2s;
+}
+.overlay.open { display: flex; }
+.overlay.visible { opacity: 1; }
+
+.sheet {
+  width: 100%;
+  background: var(--card);
+  border-radius: 20px 20px 0 0;
+  padding: 0 0 calc(20px + var(--safe-bottom));
+  max-height: 90vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  transform: translateY(100%);
+  transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.sheet.up { transform: translateY(0); }
+
+.sheet-handle {
+  width: 36px; height: 4px; background: #C7C7CC;
+  border-radius: 2px; margin: 10px auto 6px;
+}
+.sheet-head {
+  padding: 4px 20px 12px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: flex-start; justify-content: space-between;
+}
+.sheet-title { font-size: 17px; font-weight: 700; }
+.sheet-date  { font-size: 12px; color: var(--sub); margin-top: 2px; }
+.sheet-close {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--bg); border: none; color: var(--sub);
+  font-size: 13px; font-weight: 700; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; margin-top: 2px;
+}
+
+.sheet-body { padding: 14px 20px; }
+
+.section-title {
+  font-size: 11px; font-weight: 700; color: var(--sub);
+  text-transform: uppercase; letter-spacing: 0.5px;
+  margin-bottom: 8px; margin-top: 14px;
+}
+.section-title:first-child { margin-top: 0; }
+
+.row-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px;
+  background: var(--bg); border-radius: 10px;
+  margin-bottom: 5px;
+}
+.row-dot  { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.row-name { font-size: 13px; font-weight: 500; flex: 1; }
+.tag {
+  font-size: 9px; font-weight: 800; padding: 3px 8px;
+  border-radius: 5px; text-transform: uppercase;
+  white-space: nowrap;
+}
+.tag-story  { background: #D6EDFF; color: #0A6EBD; }
+.tag-post   { background: #FFD6DE; color: #C0152B; }
+.tag-collab { background: #FEF3CD; color: #7A5200; }
+
+.collab-box {
+  background: #FFFBF0; border: 1.5px solid #F4B94266;
+  border-radius: 12px; padding: 14px;
+}
+.collab-title { font-size: 14px; font-weight: 800; color: #B7770D; margin-bottom: 6px; }
+.collab-desc  { font-size: 13px; color: #555; line-height: 1.6; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🚚 Food Truck Garden</h1>
+  <p id="txt-sub">Historias diarias · 6 posts colaborativos · Posts por truck</p>
+</div>
+
+<div class="lang-bar">
+  <button class="lang-btn active" onclick="setLang('es', event)">🇪🇸 Español</button>
+  <button class="lang-btn" onclick="setLang('en', event)">🇺🇸 English</button>
+  <button class="lang-btn" onclick="setLang('pt', event)">🇧🇷 Português</button>
+</div>
+
+<div class="legend-wrap">
+  <div class="legend" id="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#E63946"></div>Pollito Chicken</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#F4A261"></div>The Taco Boss</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#A8DADC"></div>Magic Bubble</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#57CC99"></div>San Cris</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#C77DFF"></div>O Sr. Pastel</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#FF6B9D"></div>A Sra. Esfiha</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#FFD166"></div>Caracas Dog</div>
+    <div class="legend-sep"></div>
+    <div class="legend-item"><div class="legend-dot" style="background:#F4B942"></div><span id="txt-collab-leg">⭐ Post Colaborativo</span></div>
+  </div>
+</div>
+
+<div class="month-nav">
+  <button class="nav-btn" onclick="changeMonth(-1)">‹</button>
+  <div class="month-label" id="month-label"></div>
+  <button class="nav-btn" onclick="changeMonth(1)">›</button>
+</div>
+
+<div class="cal-wrap">
+  <div class="day-headers" id="day-headers"></div>
+  <div class="cal-grid"    id="cal-grid"></div>
+</div>
+
+<div class="stats" id="stats"></div>
+
+<!-- BOTTOM SHEET -->
+<div class="overlay" id="overlay" onclick="handleOverlayClick(event)">
+  <div class="sheet" id="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-head">
+      <div>
+        <div class="sheet-title" id="sh-title"></div>
+        <div class="sheet-date"  id="sh-date"></div>
+      </div>
+      <button class="sheet-close" onclick="closeSheet()">✕</button>
+    </div>
+    <div class="sheet-body" id="sh-body"></div>
+  </div>
+</div>
+
+<script>
+/* ── TRANSLATIONS ─────────────────────────── */
+const T = {
+  es: {
+    sub: 'Historias diarias · 6 posts colaborativos · Posts por truck',
+    collabLeg: '⭐ Post Colaborativo',
+    days: ['L','M','X','J','V','S','D'],
+    months: ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'],
+    dayNames: ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'],
+    modalDay: d => `Día ${d}`,
+    secStories: '📸 Historias del día',
+    secPost: '🖼️ Post del día',
+    secCollab: '⭐ Post Colaborativo',
+    tagStory: 'Historia', tagPost: 'Post', tagCollab: 'Collab',
+    statStories: 'Historias', statPosts: 'Posts', statCollab: 'Colaborativos', statTrucks: 'Trucks',
+    collabThemes: [
+      { t: '🎉 Bienvenidos al Garden', d: 'Post general de bienvenida presentando todos los trucks del parque. Ideal para alcance y nuevos seguidores.' },
+      { t: '🔥 ¿Cuál es tu favorito?', d: 'Carrusel mostrando el plato estrella de cada truck. CTA: "Comenta tu truck favorito 👇"' },
+      { t: '📍 Cómo llegar + Horarios', d: 'Post informativo con horarios actualizados, dirección y mapa. Perfecto para guardar.' },
+      { t: '⭐ Reviews de la Semana', d: 'Collage de reseñas positivas de clientes de todos los trucks. Prueba social potente.' },
+      { t: '🎊 Evento / Noche Especial', d: 'Promo de evento semanal o noche temática en el garden. Genera expectativa y asistencia.' },
+      { t: '🙌 Resumen del Mes', d: 'Recap visual de lo mejor del mes: platos, momentos, clientes. Cierre emocional y comunitario.' },
+    ],
+  },
+  en: {
+    sub: 'Daily stories · 6 collab posts · Individual posts per truck',
+    collabLeg: '⭐ Collab Post',
+    days: ['M','T','W','T','F','S','S'],
+    months: ['January','February','March','April','May','June','July','August','September','October','November','December'],
+    dayNames: ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'],
+    modalDay: d => `Day ${d}`,
+    secStories: '📸 Stories of the day',
+    secPost: '🖼️ Feed post',
+    secCollab: '⭐ Collab Post',
+    tagStory: 'Story', tagPost: 'Post', tagCollab: 'Collab',
+    statStories: 'Stories', statPosts: 'Posts', statCollab: 'Collabs', statTrucks: 'Trucks',
+    collabThemes: [
+      { t: '🎉 Welcome to the Garden', d: 'General welcome post introducing all trucks. Great for reach and new followers.' },
+      { t: '🔥 Which is your favorite?', d: "Carousel showing each truck's signature dish. CTA: \"Comment your favorite truck 👇\"" },
+      { t: '📍 How to get here + Hours', d: 'Informational post with updated hours, address and map. Perfect to save.' },
+      { t: '⭐ Reviews of the Week', d: 'Collage of positive customer reviews from all trucks. Strong social proof.' },
+      { t: '🎊 Event / Special Night', d: 'Promo for weekly event or themed night at the garden. Builds hype and attendance.' },
+      { t: '🙌 Month Recap', d: 'Visual recap of the best of the month: dishes, moments, customers.' },
+    ],
+  },
+  pt: {
+    sub: 'Histórias diárias · 6 posts colaborativos · Posts individuais por truck',
+    collabLeg: '⭐ Post Colaborativo',
+    days: ['S','T','Q','Q','S','S','D'],
+    months: ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'],
+    dayNames: ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'],
+    modalDay: d => `Dia ${d}`,
+    secStories: '📸 Histórias do dia',
+    secPost: '🖼️ Post do dia',
+    secCollab: '⭐ Post Colaborativo',
+    tagStory: 'História', tagPost: 'Post', tagCollab: 'Collab',
+    statStories: 'Histórias', statPosts: 'Posts', statCollab: 'Colaborativos', statTrucks: 'Trucks',
+    collabThemes: [
+      { t: '🎉 Bem-vindos ao Garden', d: 'Post geral de boas-vindas apresentando todos os trucks. Ideal para alcance e novos seguidores.' },
+      { t: '🔥 Qual é o seu favorito?', d: 'Carrossel mostrando o prato estrela de cada truck. CTA: "Comente seu truck favorito 👇"' },
+      { t: '📍 Como chegar + Horários', d: 'Post informativo com horários atualizados, endereço e mapa. Perfeito para salvar.' },
+      { t: '⭐ Reviews da Semana', d: 'Colagem de avaliações positivas de clientes de todos os trucks. Prova social poderosa.' },
+      { t: '🎊 Evento / Noite Especial', d: 'Promo de evento semanal ou noite temática no garden. Gera expectativa e comparecimento.' },
+      { t: '🙌 Resumo do Mês', d: 'Recap visual do melhor do mês: pratos, momentos, clientes.' },
+    ],
+  },
+};
+
+/* ── DATA ─────────────────────────────────── */
+const TRUCKS = [
+  { name:'Pollito Chicken',      emoji:'🐔', color:'#E63946' },
+  { name:'The Taco Boss',        emoji:'🌮', color:'#F4A261' },
+  { name:'Magic Bubble Creamery',emoji:'🧁', color:'#A8DADC' },
+  { name:'San Cris',             emoji:'🌶️', color:'#57CC99' },
+  { name:'O Senhor Pastel',      emoji:'🥟', color:'#C77DFF' },
+  { name:'A Senhora Esfiha',     emoji:'🫓', color:'#FF6B9D' },
+  { name:'Caracas Dog',          emoji:'🌭', color:'#FFD166' },
+];
+const COLLAB = [6,10,14,18,22,27];
+
+let year = new Date().getFullYear();
+let month = new Date().getMonth();
+let lang = 'es';
+
+/* ── HELPERS ──────────────────────────────── */
+function daysInMonth(y,m){ return new Date(y,m+1,0).getDate(); }
+
+function featuredTruck(y,m,day){
+  const total = daysInMonth(y,m);
+  const nonC = [];
+  for(let d=1;d<=total;d++) if(!COLLAB.includes(d)) nonC.push(d);
+  const idx = nonC.indexOf(day);
+  return idx === -1 ? null : TRUCKS[idx % TRUCKS.length];
+}
+
+function dayData(y,m,day){
+  const isCollab = COLLAB.includes(day);
+  return {
+    isCollab,
+    collabIdx: COLLAB.indexOf(day),
+    truck: isCollab ? null : featuredTruck(y,m,day),
+  };
+}
+
+/* ── LANG ─────────────────────────────────── */
+function setLang(l, e){
+  if (e && e.target) e.target.classList.add('active');
+  lang = l;
+  document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+  if (e && e.target) e.target.classList.add('active');
+  document.getElementById('txt-sub').textContent = T[l].sub;
+  document.getElementById('txt-collab-leg').textContent = T[l].collabLeg;
+  render();
+}
+
+/* ── RENDER ───────────────────────────────── */
+function changeMonth(d){
+  month += d;
+  if(month>11){month=0;year++;}
+  if(month<0){month=11;year--;}
+  render();
+}
+
+function render(){
+  const t = T[lang];
+  document.getElementById('month-label').textContent = `${t.months[month]} ${year}`;
+
+  // day headers
+  const hdrs = document.getElementById('day-headers');
+  hdrs.innerHTML = '';
+  t.days.forEach(d => {
+    const el = document.createElement('div');
+    el.className = 'day-hdr';
+    el.textContent = d;
+    hdrs.appendChild(el);
+  });
+
+  const grid = document.getElementById('cal-grid');
+  grid.innerHTML = '';
+
+  const total = daysInMonth(year, month);
+  let startDow = new Date(year, month, 1).getDay();
+  startDow = startDow === 0 ? 6 : startDow - 1;
+
+  // empty cells
+  for(let i=0;i<startDow;i++){
+    const e = document.createElement('div');
+    e.className = 'day-cell empty';
+    grid.appendChild(e);
+  }
+
+  let stories=0, posts=0, collabs=0;
+
+  for(let d=1;d<=total;d++){
+    const {isCollab, truck} = dayData(year, month, d);
+    const cell = document.createElement('div');
+    cell.className = 'day-cell' + (isCollab ? ' collab' : '');
+    cell.onclick = () => openSheet(d);
+
+    // day number + optional star
+    const num = document.createElement('div');
+    num.className = 'day-num';
+    num.innerHTML = `<span>${d}</span>${isCollab ? '<span class="star">⭐</span>' : ''}`;
+    cell.appendChild(num);
+
+    // 7 story dots
+    const dotsEl = document.createElement('div');
+    dotsEl.className = 'dots';
+    TRUCKS.forEach(tk => {
+      const dot = document.createElement('div');
+      dot.className = 'dot';
+      dot.style.background = tk.color;
+      dotsEl.appendChild(dot);
+      stories++;
+    });
+    cell.appendChild(dotsEl);
+
+    // post chip
+    const chip = document.createElement('div');
+    chip.className = 'chip';
+    if(isCollab){
+      chip.style.cssText = 'background:#FEF3CD;';
+      chip.innerHTML = `<div class="chip-dot" style="background:#F4B942"></div><span class="chip-txt" style="color:#7A5200">🌿 Garden</span>`;
+      collabs++;
+    } else {
+      chip.style.cssText = `background:${truck.color}22;`;
+      chip.innerHTML = `<div class="chip-dot" style="background:${truck.color}"></div><span class="chip-txt" style="color:${truck.color}">${truck.emoji} ${truck.name.split(' ')[0]}</span>`;
+      posts++;
+    }
+    cell.appendChild(chip);
+    grid.appendChild(cell);
+  }
+
+  // stats
+  const t2 = T[lang];
+  document.getElementById('stats').innerHTML = `
+    <div class="stat-card"><div class="stat-num">${stories}</div><div class="stat-label">${t2.statStories}</div></div>
+    <div class="stat-card"><div class="stat-num">${posts+collabs}</div><div class="stat-label">${t2.statPosts}</div></div>
+    <div class="stat-card"><div class="stat-num">${collabs}</div><div class="stat-label">${t2.statCollab}</div></div>
+    <div class="stat-card"><div class="stat-num">7</div><div class="stat-label">${t2.statTrucks}</div></div>
+  `;
+}
+
+/* ── SHEET ────────────────────────────────── */
+function openSheet(day){
+  const t = T[lang];
+  const {isCollab, collabIdx, truck} = dayData(year, month, day);
+  const dow = new Date(year, month, day).getDay();
+
+  document.getElementById('sh-title').textContent = `${t.modalDay(day)} — ${t.dayNames[dow]}`;
+  document.getElementById('sh-date').textContent  = `${day} de ${t.months[month]} ${year}`;
+
+  let html = '';
+
+  // Stories
+  html += `<div class="section-title">${t.secStories}</div>`;
+  TRUCKS.forEach(tk => {
+    html += `<div class="row-item">
+      <div class="row-dot" style="background:${tk.color}"></div>
+      <div class="row-name">${tk.emoji} ${tk.name}</div>
+      <span class="tag tag-story">${t.tagStory}</span>
+    </div>`;
+  });
+
+  // Post
+  html += `<div class="section-title">${t.secPost}</div>`;
+  if(isCollab){
+    html += `<div class="row-item">
+      <div class="row-dot" style="background:#F4B942"></div>
+      <div class="row-name">🌿 Food Truck Garden</div>
+      <span class="tag tag-collab">${t.tagCollab}</span>
+    </div>`;
+  } else {
+    html += `<div class="row-item">
+      <div class="row-dot" style="background:${truck.color}"></div>
+      <div class="row-name">${truck.emoji} ${truck.name}</div>
+      <span class="tag tag-post">${t.tagPost}</span>
+    </div>`;
+  }
+
+  // Collab theme
+  if(isCollab){
+    const theme = t.collabThemes[collabIdx];
+    html += `<div class="section-title">${t.secCollab}</div>
+    <div class="collab-box">
+      <div class="collab-title">${theme.t}</div>
+      <div class="collab-desc">${theme.d}</div>
+    </div>`;
+  }
+
+  document.getElementById('sh-body').innerHTML = html;
+
+  const overlay = document.getElementById('overlay');
+  const sheet   = document.getElementById('sheet');
+  overlay.style.display = 'flex';
+  requestAnimationFrame(() => {
+    overlay.classList.add('visible');
+    sheet.classList.add('up');
+  });
+}
+
+function closeSheet(){
+  const overlay = document.getElementById('overlay');
+  const sheet   = document.getElementById('sheet');
+  overlay.classList.remove('visible');
+  sheet.classList.remove('up');
+  setTimeout(() => { overlay.style.display = 'none'; }, 280);
+}
+
+function handleOverlayClick(e){
+  if(e.target === document.getElementById('overlay')) closeSheet();
+}
+
+// swipe down to close
+let startY = 0;
+document.getElementById('sheet').addEventListener('touchstart', e => {
+  startY = e.touches[0].clientY;
+}, { passive: true });
+document.getElementById('sheet').addEventListener('touchend', e => {
+  if(e.changedTouches[0].clientY - startY > 80) closeSheet();
+}, { passive: true });
+
+render();
+</script>
+</body>
+</html>
